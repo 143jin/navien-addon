@@ -1,0 +1,42 @@
+{
+  "name": "Navien Wallpad Controller with RS485",
+  "version": "1.0.0",
+  "slug": "navien_wallpad",
+  "description": "Navien Wallpad Controller for Homeassistant",
+  "arch": [
+    "armhf",
+    "armv7",
+    "aarch64",
+    "amd64",
+    "i386"
+  ],
+  "url": "https://github.com/JeongTaehun/addons",
+  "startup": "application",
+  "boot": "auto",
+  "uart": true,
+  "map": [
+    "share:rw"
+  ],
+  "options": {
+    "Serial": {
+      "port": "/dev/ttyUSB0"
+    },
+    "MQTT": {
+      "server": "192.168.200.48",
+      "port": 1883,
+      "username": "user",
+      "password": "pass"
+    }
+  },
+  "schema": {
+    "Serial": {
+      "port": "str"
+    },
+    "MQTT": {
+      "server": "str",
+      "port": "int",
+      "username": "str",
+      "password": "str"
+    }
+  }
+}
