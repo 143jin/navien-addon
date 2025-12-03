@@ -84,6 +84,9 @@ class Device:
         }
         return json.dumps(result, ensure_ascii=False)
 
+    def get_status_attr_list(self):
+        return list(set([status['attr_name'] for status_list in self.__status_messages_map.values() for status in status_list]))
+
 # 3. Wallpad 클래스
 class Wallpad:
     _device_list = []
@@ -186,10 +189,12 @@ if __name__ == "__main__":
     config = load_config()
     wallpad = Wallpad(config)
 
-    # 여기서 환풍기, 가스, 조명, 난방 장치들을 리스트로 정의하고 루프로 등록하면 됨
-    # 예시:
-    fan = wallpad.add_device("환풍기", "32", "01", "fan",
-                             optional_info={"optimistic": "false", "speed_range_min": 1, "speed_range_max": 3})
-    fan.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
-
-   
+    # 환풍기 프리셋 모드 정의
+    packet_2_preset = {
+        "00": "off",
+        "01": "환기",
+        "02": "오토",
+        "03": "공기청정",
+        "04": "바이패스"
+    }
+    preset_2_packet = {v: k for k,
