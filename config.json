@@ -10,7 +10,7 @@
     "amd64",
     "i386"
   ],
-  "url": "https://github.com/JeongTaehun/addons",
+  "url": "https://github.com/143jin/navien",
   "startup": "application",
   "boot": "auto",
   "uart": true,
