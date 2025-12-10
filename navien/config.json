@@ -1,37 +1,19 @@
 {
-  "name": "Navien Wallpad Controller with RS485",
+  "name": "Navien RS485 MQTT Bridge",
   "version": "1.0.0",
-  "slug": "navien_wallpad",
-  "description": "Navien Wallpad Controller for Homeassistant",
-  "arch": [
-    "armhf",
-    "armv7",
-    "aarch64",
-    "amd64",
-    "i386"
-  ],
-  "url": "https://github.com/143jin/navien",
-  "startup": "application",
+  "slug": "navien",
+  "description": "RS485 ↔ MQTT 브리지 애드온",
+  "startup": "services",
   "boot": "auto",
-  "uart": true,
-  "map": [
-    "share:rw"
-  ],
   "options": {
-    "Serial": {
-      "port": "/dev/ttyUSB0"
-    },
     "MQTT": {
-      "server": "192.168.200.48",
+      "server": "192.168.0.10",
       "port": 1883,
-      "username": "user",
-      "password": "pass"
+      "username": "homeassistant",
+      "password": "password"
     }
   },
   "schema": {
-    "Serial": {
-      "port": "str"
-    },
     "MQTT": {
       "server": "str",
       "port": "int",
