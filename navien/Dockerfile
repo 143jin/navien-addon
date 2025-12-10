@@ -1,6 +1,10 @@
 FROM python:3.11-slim
-WORKDIR /app 
-COPY . /app  
-RUN pip install --trusted-host pypi.python.org -r requirements.txt 
-EXPOSE 80 
-CMD ["python", "navien.py"]
+
+WORKDIR /usr/src/app
+
+COPY navien.py .
+COPY run.sh .
+
+RUN pip install paho-mqtt
+
+CMD ["/usr/src/app/run.sh"]
