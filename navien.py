@@ -189,12 +189,76 @@ if __name__ == "__main__":
     config = load_config()
     wallpad = Wallpad(config)
 
-    # 환풍기 프리셋 모드 정의
-    packet_2_preset = {
-        "00": "off",
-        "01": "환기",
-        "02": "오토",
-        "03": "공기청정",
-        "04": "바이패스"
-    }
-    preset_2_packet = {v: k for k,
+# 환풍기 프리셋 매핑
+packet_2_preset = {
+    "01": "바이패스",
+    "03": "전열",
+    "04": "오토",
+    "05": "공기청정",
+    "00": "off"
+}
+preset_2_packet = {v: k for k, v in packet_2_preset.items()}
+
+# 환풍기 속도 매핑
+packet_2_speed = {
+    "01": "약",   # 33%
+    "02": "중",   # 66%
+    "03": "강"    # 100%
+}
+speed_2_packet = {v: k for k, v in packet_2_speed.items()}
+
+optional_info = {
+    "optimistic": "false",
+    "preset_modes": ["off", "바이패스", "전열", "오토", "공기청정"],
+    "supported_speeds": ["약", "중", "강"]
+}
+
+fan = wallpad.add_device(
+    device_name="환풍기",
+    device_id="32",
+    device_subid="01",
+    device_class="fan",
+    optional_info=optional_info
+)
+
+# 상태 등록 (모드)
+fan.register_status(
+    message_flag="81",
+    attr_name="preset_mode",
+    topic_class="preset_mode_state_topic",
+    regex=r"05.{4}(0[0-5])",
+    process_func=lambda v: packet_2_preset[v]
+)
+
+# 명령 등록 (모드)
+fan.register_command(
+    message_flag="43",
+    attr_name="preset_mode",
+    topic_class="preset_mode_command_topic",
+    process_func=lambda v: preset_2_packet[v]
+)
+
+# OFF 명령
+fan.register_command(
+    message_flag="41",
+    attr_name="power",
+    topic_class="command_topic",
+    process_func=lambda v: "00" if v == "off" else "01"
+)
+
+# 상태 등록 (속도)
+fan.register_status(
+    message_flag="81",
+    attr_name="speed",
+    topic_class="percentage_state_topic",
+    regex=r"05.{4}0[0-5].{2}(0[1-3])",
+    process_func=lambda v: packet_2_speed[v]
+)
+
+# 명령 등록 (속도)
+fan.register_command(
+    message_flag="42",
+    attr_name="speed",
+    topic_class="percentage_command_topic",
+    process_func=lambda v: speed_2_packet[v]
+)
