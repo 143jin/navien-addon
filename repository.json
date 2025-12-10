@@ -1,0 +1,13 @@
+{
+  "name": "Navien RS485 Add-on",
+  "url": "https://github.com/143jin/navien-addon",
+  "maintainer": "143jin",
+  "addons": [
+    {
+      "slug": "navien",
+      "name": "Navien RS485 MQTT Bridge",
+      "description": "RS485 ↔ MQTT 브리지 (환풍기, 가스, 조명, 난방)",
+      "version": "1.0.0"
+    }
+  ]
+}
