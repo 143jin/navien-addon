@@ -1,6 +1,7 @@
 {
   "name": "Navien RS485 MQTT Bridge",
   "version": "1.0.0",
+  "arch": ["amd64", "armv7", "aarch64"]
   "slug": "navien",
   "description": "RS485 ↔ MQTT 브리지 애드온",
   "startup": "services",
