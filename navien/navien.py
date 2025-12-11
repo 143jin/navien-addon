@@ -1,13 +1,21 @@
+import os
 import re
 import json
 import paho.mqtt.client as mqtt
 from functools import reduce
 from collections import defaultdict
-# Home Assistant 애드온 UI에서 입력한 값들이 환경변수로 전달됨
-MQTT_SERVER = os.environ.get("MQTT_SERVER", "localhost")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
-MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
+
+# 1. 애드온 설정 불러오기
+def load_config():
+    with open('/data/options.json') as f:
+        return json.load(f)
+
+# 2. MQTT 설정 읽기
+config = load_config()
+MQTT_SERVER = config["MQTT"]["server"]
+MQTT_PORT = int(config["MQTT"]["port"])
+MQTT_USERNAME = config["MQTT"]["username"]
+MQTT_PASSWORD = config["MQTT"]["password"]
 
 # 토픽 정의
 MQTT_COMMAND_TOPIC = "rs485_2mqtt/dev/command"
