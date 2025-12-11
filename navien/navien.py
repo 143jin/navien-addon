@@ -37,7 +37,7 @@ def publish_fan_discovery(client):
     print("Published fan discovery config")
 
 # 3. MQTT 콜백
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
     print("Connected to MQTT broker with result code " + str(rc))
     client.subscribe(MQTT_COMMAND_TOPIC)
     publish_fan_discovery(client)
