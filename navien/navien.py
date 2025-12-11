@@ -27,6 +27,7 @@ def publish_fan_discovery(client):
         "unique_id": "navien_fan_1",
         "state_topic": MQTT_RAW_TOPIC,
         "command_topic": MQTT_COMMAND_TOPIC,
+        "preset_modes": ["low", "medium", "high"],
         "device": {
             "identifiers": ["navien_fan"],
             "name": "Navien RS485 Fan",
@@ -34,7 +35,7 @@ def publish_fan_discovery(client):
         }
     }
     client.publish(discovery_topic, json.dumps(payload), retain=True)
-    print("Published fan discovery config")
+    print("Published fan discovery config with presets")
 
 # 3. MQTT 콜백
 def on_connect(client, userdata, flags, rc, properties=None):
