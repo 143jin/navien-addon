@@ -1,6 +1,8 @@
 import os
 import json
+import re
 import paho.mqtt.client as mqtt
+import serial
 from collections import defaultdict
 
 # 1. 애드온 설정 불러오기
@@ -17,9 +19,9 @@ MQTT_PASSWORD = config["MQTT"]["password"]
 MQTT_COMMAND_TOPIC = "rs485_2mqtt/dev/command"
 MQTT_RAW_TOPIC = "rs485_2mqtt/dev/raw"
 
-# 2. Discovery 메시지 발행 함수
-def publish_discovery(client):
-    discovery_topic = "homeassistant/sensor/navien_fan/config"
+# 2. 환풍기 Discovery 메시지 발행
+def publish_fan_discovery(client):
+    discovery_topic = "homeassistant/fan/navien_fan/config"
     payload = {
         "name": "Navien Fan",
         "unique_id": "navien_fan_1",
@@ -32,20 +34,110 @@ def publish_discovery(client):
         }
     }
     client.publish(discovery_topic, json.dumps(payload), retain=True)
-    print("Published discovery config")
+    print("Published fan discovery config")
 
 # 3. MQTT 콜백
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT broker with result code " + str(rc))
     client.subscribe(MQTT_COMMAND_TOPIC)
-    # 연결되면 discovery 메시지 발행
-    publish_discovery(client)
+    publish_fan_discovery(client)
 
 def on_message(client, userdata, msg):
     print(f"Received message on {msg.topic}: {msg.payload.decode()}")
-    # TODO: RS485 전송 로직 추가
+    # TODO: RS485 전송 로직 추가 (환풍기 제어)
 
-# 4. 메인 실행
+# 4. Device 클래스 (확장용)
+class Device:
+    def __init__(self, device_name, device_id, device_subid, device_class,
+                 child_device=None, mqtt_discovery=True, optional_info=None):
+        self.device_name = device_name
+        self.device_id = device_id
+        self.device_subid = device_subid
+        self.device_unique_id = f"rs485_{device_id}_{device_subid}"
+        self.device_class = device_class
+        self.child_device = child_device or []
+        self.mqtt_discovery = mqtt_discovery
+        self.optional_info = optional_info or {}
+
+        self.__status_messages_map = defaultdict(list)
+        self.__command_messages_map = {}
+
+    def register_status(self, message_flag, attr_name, regex, topic_class,
+                        device_name=None, process_func=lambda v: v):
+        device_name = self.device_name if device_name is None else device_name
+        self.__status_messages_map[message_flag].append({
+            'regex': regex,
+            'process_func': process_func,
+            'device_name': device_name,
+            'attr_name': attr_name,
+            'topic_class': topic_class
+        })
+
+    def register_command(self, message_flag, attr_name, topic_class,
+                         process_func=lambda v: v):
+        self.__command_messages_map[attr_name] = {
+            'message_flag': message_flag,
+            'attr_name': attr_name,
+            'topic_class': topic_class,
+            'process_func': process_func
+        }
+
+    def parse_payload(self, payload_dict, root_topic):
+        result = {}
+        device_family = [self] + self.child_device
+        for device in device_family:
+            for status in device.__status_messages_map[payload_dict['message_flag']]:
+                topic = '/'.join([root_topic, device.device_class,
+                                  device.device_name, status['attr_name']])
+                result[topic] = status['process_func'](
+                    re.match(status['regex'], payload_dict['data'])[1]
+                )
+        return result
+
+    def get_mqtt_discovery_payload(self, root_topic, ha_root_topic):
+        result = {
+            '~': '/'.join([root_topic, self.device_class, self.device_name]),
+            'name': self.device_name,
+            'uniq_id': self.device_unique_id,
+        }
+        result.update(self.optional_info)
+        for status_list in self.__status_messages_map.values():
+            for status in status_list:
+                result[status['topic_class']] = '/'.join(['~', status['attr_name']])
+        for status_list in self.__command_messages_map.values():
+            result[status_list['topic_class']] = '/'.join(['~', status_list['attr_name'], 'set'])
+        result['device'] = {
+            'identifiers': self.device_unique_id,
+            'name': self.device_name
+        }
+        return json.dumps(result, ensure_ascii=False)
+
+# 5. Wallpad 클래스 (RS485 ↔ MQTT 브리지)
+class Wallpad:
+    _device_list = []
+
+    def __init__(self, config):
+        self.config = config
+        self.root_topic = "rs485_2mqtt"
+        self.ha_root_topic = "homeassistant"
+
+        self.mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+        self.mqtt_client.on_message = self.on_raw_message
+        self.mqtt_client.on_disconnect = self.on_disconnect
+        self.mqtt_client.username_pw_set(
+            username=config["MQTT"]["username"],
+            password=config["MQTT"]["password"]
+        )
+        self.mqtt_client.connect(config["MQTT"]["server"], config["MQTT"]["port"])
+
+    def on_raw_message(self, client, userdata, msg):
+        print(f"RS485 raw message: {msg.payload.decode()}")
+        # TODO: RS485 데이터 파싱 후 MQTT 발행
+
+    def on_disconnect(self, client, userdata, rc):
+        print("MQTT disconnected")
+
+# 6. 메인 실행
 def main():
     client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
