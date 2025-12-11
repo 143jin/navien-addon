@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 /usr/src/app/Test.py
+python3 /usr/src/app/test.py
