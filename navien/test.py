@@ -86,15 +86,25 @@ class Wallpad:
     _device_list = []
 
     def __init__(self):
-        self.mqtt_client = mqtt.Client()
-        self.mqtt_client.on_message    = self.on_raw_message
+        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt", protocol=mqtt.MQTTv311)
+        self.mqtt_client.on_connect = self.on_connect
+        self.mqtt_client.on_message = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-        self.mqtt_client.connect(MQTT_SERVER, 1883)
+        self.mqtt_client.connect(MQTT_SERVER, MQTT_PORT)
+
+    def on_connect(self, client, userdata, flags, rc, properties=None):
+        if rc == 0:
+            print("✅ MQTT 연결 성공")
+            self.register_mqtt_discovery()
+        else:
+            print("❌ MQTT 연결 실패, 코드:", rc)
 
     def listen(self):
-        self.register_mqtt_discovery()
-        self.mqtt_client.subscribe([(topic, 2) for topic in [ROOT_TOPIC_NAME + '/dev/raw'] + self.get_topic_list_to_listen()])
+        # raw + command 토픽 구독
+        self.mqtt_client.subscribe(
+            [(topic, 1) for topic in [ROOT_TOPIC_NAME + '/dev/raw'] + self.get_topic_list_to_listen()]
+        )
         self.mqtt_client.loop_forever()
 
     def register_mqtt_discovery(self):
@@ -102,8 +112,9 @@ class Wallpad:
             if device.mqtt_discovery:
                 topic = '/'.join([HOMEASSISTANT_ROOT_TOPIC_NAME, device.device_class, device.device_unique_id, 'config'])
                 payload = device.get_mqtt_discovery_payload()
-                self.mqtt_client.publish(topic, payload, qos = 2, retain = True)
+                self.mqtt_client.publish(topic, payload, qos=1, retain=True)
 
+    # ... 나머지 add_device, get_device, get_topic_list_to_listen, xor, add 그대로 유지 ...
     def add_device(self, device_name, device_id, device_subid, device_class, child_device = [], mqtt_discovery = True, optional_info = {}):
         device = Device(device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info)
         self._device_list.append(device)
@@ -240,4 +251,6 @@ optional_info = {
     topic_class='preset_mode_command_topic',
     process_func=lambda v: preset_2_packet[v]
 )
+
+wallpad = Wallpad()
 wallpad.listen()
