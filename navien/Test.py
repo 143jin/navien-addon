@@ -159,79 +159,85 @@ class Wallpad:
     def on_disconnect(self, client, userdata, rc):
         raise ConnectionError
 
-MQTT_SERVER = '192.168.200.68'
-ROOT_TOPIC_NAME = 'rs485_2mqtt'
-HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
-wallpad = Wallpad()
+# 프리셋 모드 매핑 (RS485 패킷 ↔ 프리셋 문자열)
+packet_2_preset = {
+    "01": "바이패스",
+    "03": "전열",
+    "04": "오토",
+    "05": "공기청정",
+    "00": "off"
+}
+preset_2_packet = {v: k for k, v in packet_2_preset.items()}
 
-packet_2_payload_percentage = {'00': '0', '01': '1', '02': '2', '03': '3'}
-packet_2_payload_oscillation = {'03': 'oscillate_on', '00': 'oscillation_off', '01': 'oscillate_off'}
 
 ### 환풍기 ###
-optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max': 3}
-환풍기 = wallpad.add_device(device_name = '환풍기', device_id = '32', device_subid = '01', device_class = 'fan', optional_info = optional_info)
-환풍기.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic',      regex = r'()', process_func = lambda v: 'online')
-환풍기.register_status(message_flag = '81', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])0[0-3]0[013]00', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-환풍기.register_status(message_flag = 'c1', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])0[0-3]0[013]00', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-환풍기.register_status(message_flag = '81', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])0[013]00', process_func = lambda v: packet_2_payload_percentage[v])
-환풍기.register_status(message_flag = 'c2', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])0[013]00', process_func = lambda v: packet_2_payload_percentage[v])
-환풍기.register_status(message_flag = '81', attr_name = 'heat',         topic_class ='oscillation_state_topic', regex = r'000[01]0[0-3](0[013])00', process_func = lambda v: packet_2_payload_oscillation[v])
-환풍기.register_status(message_flag = 'c3', attr_name = 'heat',         topic_class ='oscillation_state_topic', regex = r'000[01]0[0-3](0[013])00', process_func = lambda v: packet_2_payload_oscillation[v])
+optional_info = {
+    'optimistic': 'false',
+    'preset_modes': ['off', '바이패스', '전열', '오토', '공기청정']
+}
 
-환풍기.register_command(message_flag = '41', attr_name = 'power',       topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-환풍기.register_command(message_flag = '42', attr_name = 'percentage',  topic_class = 'percentage_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_percentage.items()}[v])
-환풍기.register_command(message_flag = '43', attr_name = 'heat',        topic_class = 'oscillation_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_oscillation.items()}[v])
+환풍기 = wallpad.add_device(
+    device_name='환풍기',
+    device_id='32',
+    device_subid='01',
+    device_class='fan',
+    optional_info=optional_info
+)
 
-### 가스차단기 ###
-optional_info = {'optimistic': 'false'}
-가스 = wallpad.add_device(device_name = '가스', device_id = '12', device_subid = '01', device_class = 'switch', optional_info = optional_info)
-가스.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic', regex = r'()', process_func = lambda v: 'online')
-가스.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[12])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-가스.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[12])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
+# 상태 등록
+환풍기.register_status(
+    message_flag='01',
+    attr_name='availability',
+    topic_class='availability_topic',
+    regex=r'()',
+    process_func=lambda v: 'online'
+)
 
-가스.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v == 'ON' else '00')
+환풍기.register_status(
+    message_flag='81',
+    attr_name='power',
+    topic_class='state_topic',
+    regex=r'00(0[01])0[0-3]0[013]00',
+    process_func=lambda v: 'ON' if v == '01' else 'OFF'
+)
 
-### 조명 ###
-optional_info = {'optimistic': 'false'}
-거실등1    = wallpad.add_device(device_name = '거실등1', device_id = '0e', device_subid = '11', device_class = 'light', optional_info = optional_info)
-거실등2    = wallpad.add_device(device_name = '거실등2', device_id = '0e', device_subid = '12', device_class = 'light', optional_info = optional_info)
-간접등     = wallpad.add_device(device_name = '간접등',  device_id = '0e', device_subid = '13', device_class = 'light', optional_info = optional_info)
-주방등     = wallpad.add_device(device_name = '주방등',  device_id = '0e', device_subid = '14', device_class = 'light', optional_info = optional_info)
-식탁등     = wallpad.add_device(device_name = '식탁등',  device_id = '0e', device_subid = '15', device_class = 'light', optional_info = optional_info)
-복도등     = wallpad.add_device(device_name = '복도등',  device_id = '0e', device_subid = '16', device_class = 'light', optional_info = optional_info)
-안방등     = wallpad.add_device(device_name = '안방등',  device_id = '0e', device_subid = '21', device_class = 'light', optional_info = optional_info)
-대피공간등     = wallpad.add_device(device_name = '대피공간등',  device_id = '0e', device_subid = '22', device_class = 'light', optional_info = optional_info)
-거실등전체 = wallpad.add_device(device_name = '거실등 전체', device_id = '0e', device_subid = '1f', device_class = 'light', mqtt_discovery = False, child_device = [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등])
-안방등전체 = wallpad.add_device(device_name = '안방등 전체', device_id = '0e', device_subid = '2f', device_class = 'light', mqtt_discovery = False, child_device = [안방등, 대피공간등])
+환풍기.register_status(
+    message_flag='c1',
+    attr_name='power',
+    topic_class='state_topic',
+    regex=r'00(0[01])0[0-3]0[013]00',
+    process_func=lambda v: 'ON' if v == '01' else 'OFF'
+)
 
-거실등전체.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic', regex = r'()', process_func = lambda v: 'online')
-안방등전체.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic', regex = r'()', process_func = lambda v: 'online')
+# 프리셋 모드 상태 (패킷 → 프리셋 변환)
+환풍기.register_status(
+    message_flag='81',
+    attr_name='preset_mode',
+    topic_class='preset_mode_state_topic',
+    regex=r'000[01](0[0-5])0[013]00',
+    process_func=lambda v: packet_2_preset[v]
+)
 
-거실등1.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])0[01]0[01]', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-거실등2.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01](0[01])0[01]', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-간접등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01]0[01](0[01])0[01]', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-주방등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01]0[01]0[01](0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-식탁등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01]0[01]0[01]0[01](0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-복도등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01]0[01]0[01]0[01]0[01](0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-안방등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])0[01]', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-대피공간등.register_status(message_flag = '81', attr_name = 'power', topic_class ='state_topic', regex = r'000[01](0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
+환풍기.register_status(
+    message_flag='c2',
+    attr_name='preset_mode',
+    topic_class='preset_mode_state_topic',
+    regex=r'000[01](0[0-5])0[013]00',
+    process_func=lambda v: packet_2_preset[v]
+)
 
-거실등1.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-거실등2.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-간접등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-주방등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-식탁등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-복도등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-안방등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
-대피공간등.register_status(message_flag = 'c1', attr_name = 'power', topic_class ='state_topic', regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
+# 명령 등록
+환풍기.register_command(
+    message_flag='41',
+    attr_name='power',
+    topic_class='command_topic',
+    process_func=lambda v: '01' if v == 'ON' else '00'
+)
 
-거실등1.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00') # 'ON': '01' / 'OFF': '00'
-거실등2.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-간접등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-주방등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-식탁등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-복도등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-안방등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-대피공간등.register_command(message_flag = '41', attr_name = 'power', topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
-
+환풍기.register_command(
+    message_flag='43',
+    attr_name='preset_mode',
+    topic_class='preset_mode_command_topic',
+    process_func=lambda v: preset_2_packet[v]
+)
 wallpad.listen()
