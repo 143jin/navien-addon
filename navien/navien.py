@@ -1,8 +1,6 @@
 import os
-import re
 import json
 import paho.mqtt.client as mqtt
-from functools import reduce
 from collections import defaultdict
 
 # 1. 애드온 설정 불러오기
@@ -10,44 +8,54 @@ def load_config():
     with open('/data/options.json') as f:
         return json.load(f)
 
-# 2. MQTT 설정 읽기
 config = load_config()
 MQTT_SERVER = config["MQTT"]["server"]
 MQTT_PORT = int(config["MQTT"]["port"])
 MQTT_USERNAME = config["MQTT"]["username"]
 MQTT_PASSWORD = config["MQTT"]["password"]
 
-# 토픽 정의
 MQTT_COMMAND_TOPIC = "rs485_2mqtt/dev/command"
 MQTT_RAW_TOPIC = "rs485_2mqtt/dev/raw"
 
+# 2. Discovery 메시지 발행 함수
+def publish_discovery(client):
+    discovery_topic = "homeassistant/sensor/navien_fan/config"
+    payload = {
+        "name": "Navien Fan",
+        "unique_id": "navien_fan_1",
+        "state_topic": MQTT_RAW_TOPIC,
+        "command_topic": MQTT_COMMAND_TOPIC,
+        "device": {
+            "identifiers": ["navien_fan"],
+            "name": "Navien RS485 Fan",
+            "manufacturer": "Navien"
+        }
+    }
+    client.publish(discovery_topic, json.dumps(payload), retain=True)
+    print("Published discovery config")
+
+# 3. MQTT 콜백
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT broker with result code " + str(rc))
-    # RS485 → MQTT 상태 토픽 구독
     client.subscribe(MQTT_COMMAND_TOPIC)
+    # 연결되면 discovery 메시지 발행
+    publish_discovery(client)
 
 def on_message(client, userdata, msg):
     print(f"Received message on {msg.topic}: {msg.payload.decode()}")
-    # 여기서 RS485 패킷 변환 로직 추가
-    # 예: msg.payload → RS485 전송
+    # TODO: RS485 전송 로직 추가
 
+# 4. 메인 실행
 def main():
-    client = mqtt.Client()
+    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.on_connect = on_connect
     client.on_message = on_message
-
     client.connect(MQTT_SERVER, MQTT_PORT, 60)
     client.loop_forever()
 
 if __name__ == "__main__":
     main()
-
-# 1. 애드온 설정 불러오기
-def load_config():
-    with open('/data/options.json') as f:
-        return json.load(f)
-
 # 2. Device 클래스
 class Device:
     def __init__(self, device_name, device_id, device_subid, device_class,
