@@ -20,70 +20,81 @@ MQTT_RAW_TOPIC = "rs485_2mqtt/dev/raw"
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
 class Device:
-    def __init__(self, device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info):
+    def __init__(self, device_name, device_id, device_subid, device_class, optional_info=None):
         self.device_name = device_name
         self.device_id = device_id
         self.device_subid = device_subid
-        self.device_unique_id = 'rs485_' + self.device_id + '_' + self.device_subid
         self.device_class = device_class
-        self.child_device = child_device
-        self.mqtt_discovery = mqtt_discovery
-        self.optional_info = optional_info
-
-        self.__message_flag = {}            # {'power': '41'}
-        self.__command_process_func = {}
-
-        self.__status_messages_map = defaultdict(list)
+        self.device_unique_id = f"rs485_{device_id}_{device_subid}"
+        self.__status_messages_map = {}
         self.__command_messages_map = {}
+        self.optional_info = optional_info or {}
 
-    def register_status(self, message_flag, attr_name, regex, topic_class, device_name = None, process_func = lambda v: v):
-        device_name = self.device_name if device_name == None else device_name
-        self.__status_messages_map[message_flag].append({'regex': regex, 'process_func': process_func, 'device_name': device_name, 'attr_name': attr_name, 'topic_class': topic_class})
+    # 상태 등록
+    def register_status(self, message_flag, attr_name, topic_class, regex, process_func):
+        if message_flag not in self.__status_messages_map:
+            self.__status_messages_map[message_flag] = []
+        self.__status_messages_map[message_flag].append({
+            'attr_name': attr_name,
+            'topic_class': topic_class,
+            'regex': regex,
+            'process_func': process_func
+        })
 
-    def register_command(self, message_flag, attr_name, topic_class, process_func = lambda v: v):
-        self.__command_messages_map[attr_name] = {'message_flag': message_flag, 'attr_name': attr_name, 'topic_class': topic_class, 'process_func': process_func}
+    # 명령 등록
+    def register_command(self, message_flag, attr_name, topic_class, process_func):
+        if message_flag not in self.__command_messages_map:
+            self.__command_messages_map[message_flag] = []
+        self.__command_messages_map[message_flag].append({
+            'attr_name': attr_name,
+            'topic_class': topic_class,
+            'process_func': process_func
+        })
 
-    def parse_payload(self, payload_dict):
-        result = {}
-        device_family = [self] + self.child_device
-        for device in device_family:
-            for status in device.__status_messages_map[payload_dict['message_flag']]:
-                topic = '/'.join([ROOT_TOPIC_NAME, device.device_class, device.device_name, status['attr_name']])
-                result[topic] = status['process_func'](re.match(status['regex'], payload_dict['data'])[1])
-        return result
+    # 상태 속성 목록 반환 (에러 해결 포인트)
+    def get_status_attr_list(self):
+        return list(set(
+            status['attr_name']
+            for status_list in self.__status_messages_map.values()
+            for status in status_list
+        ))
 
-    def get_command_payload_byte(self, attr_name, attr_value):  # command('power', 'ON')   command('percentage', 'middle')
-        attr_value = self.__command_messages_map[attr_name]['process_func'](attr_value)
+    # 명령 페이로드 생성
+    def get_command_payload_byte(self, attr_name, value):
+        for message_flag, command_list in self.__command_messages_map.items():
+            for command in command_list:
+                if command['attr_name'] == attr_name:
+                    payload = command['process_func'](value)
+                    return message_flag, payload
+        return None, None
 
-        command_payload = ['f7', self.device_id, self.device_subid, self.__command_messages_map[attr_name]['message_flag'], '01', attr_value]
-        command_payload.append(Wallpad.xor(command_payload))
-        command_payload.append(Wallpad.add(command_payload))
-        return bytearray.fromhex(' '.join(command_payload))
-
-def get_mqtt_discovery_payload(self):
-    result = {
-        "~": '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
-        "name": self.device_name,
-        "unique_id": self.device_unique_id,
-        "preset_modes": ["off","바이패스","전열","오토","공기청정"],
-        "availability_topic": "~/availability",
-        "state_topic": "~/power",
-        "preset_mode_state_topic": "~/preset_mode",
-        "command_topic": "~/power/set",
-        "preset_mode_command_topic": "~/preset_mode/set",
-        "device": {
-            "identifiers": [self.device_unique_id],
-            "name": self.device_name
+    # MQTT Discovery 메시지 생성
+    def get_mqtt_discovery_payload(self):
+        result = {
+            "~": '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
+            "name": self.device_name,
+            "unique_id": self.device_unique_id,
+            "availability_topic": "~/availability",
+            "state_topic": "~/power",
+            "command_topic": "~/power/set",
+            "preset_mode_state_topic": "~/preset_mode",
+            "preset_mode_command_topic": "~/preset_mode/set",
+            "device": {
+                "identifiers": [self.device_unique_id],
+                "name": self.device_name
+            }
         }
-    }
-    return json_dumps(result, ensure_ascii=False)
+        # optional_info 병합
+        result.update(self.optional_info)
+        return json_dumps(result, ensure_ascii=False)
+    def get_status_attr_list(self):
+        """등록된 상태 메시지들의 attr_name 목록을 반환"""
+        return list(set(
+            status['attr_name']
+            for status_list in self.__status_messages_map.values()
+            for status in status_list
+        ))
 
-def get_status_attr_list(self):
-    return list(set([
-        status['attr_name']
-        for status_list in self.__status_messages_map.values()
-        for status in status_list
-    ]))
 class Wallpad:
     _device_list = []
 
