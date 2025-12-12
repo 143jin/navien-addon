@@ -60,25 +60,23 @@ class Device:
         command_payload.append(Wallpad.add(command_payload))
         return bytearray.fromhex(' '.join(command_payload))
 
-    def get_mqtt_discovery_payload(self):
-        result = {
-            '~': '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
-            'name': self.device_name,
-            'uniq_id': self.device_unique_id,
+def get_mqtt_discovery_payload(self):
+    result = {
+        "~": '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
+        "name": self.device_name,
+        "unique_id": self.device_unique_id,
+        "preset_modes": ["off","바이패스","전열","오토","공기청정"],
+        "availability_topic": "~/availability",
+        "state_topic": "~/power",
+        "preset_mode_state_topic": "~/preset_mode",
+        "command_topic": "~/power/set",
+        "preset_mode_command_topic": "~/preset_mode/set",
+        "device": {
+            "identifiers": [self.device_unique_id],
+            "name": self.device_name
         }
-        result.update(self.optional_info)
-        for status_list in self.__status_messages_map.values():
-            for status in status_list:
-                result[status['topic_class']] = '/'.join(['~', status['attr_name']])
-
-        for status_list in self.__command_messages_map.values():
-            result[status_list['topic_class']] = '/'.join(['~', status_list['attr_name'], 'set'])
-
-        result['device'] = {
-            'identifiers': self.device_unique_id,
-            'name': self.device_name
-        }
-        return json_dumps(result, ensure_ascii = False)
+    }
+    return json_dumps(result, ensure_ascii=False)
 
     def get_status_attr_list(self):
         return list(set([status['attr_name'] for status_list in self.__status_messages_map.values() for status in status_list]))
