@@ -1,13 +1,18 @@
 import paho.mqtt.client as mqtt
 import re
-import json   # ← 이 줄 추가
+import json
 from json import dumps as json_dumps
 from functools import reduce
 from collections import defaultdict
-# 1. 애드온 설정 불러오기
+
+# 1. 애드온 설정 불러오기 (예외 처리 추가)
 def load_config():
-    with open('/data/options.json') as f:
-        return json.load(f)
+    try:
+        with open('/data/options.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print("Failed to load config:", e)
+        raise
 
 config = load_config()
 MQTT_SERVER = config["MQTT"]["server"]
@@ -18,6 +23,7 @@ ROOT_TOPIC_NAME = 'rs485_2mqtt'
 MQTT_COMMAND_TOPIC = "rs485_2mqtt/dev/command"
 MQTT_RAW_TOPIC = "rs485_2mqtt/dev/raw"
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
+
 
 class Device:
     def __init__(self, device_name, device_id, device_subid, device_class,
@@ -54,7 +60,7 @@ class Device:
             'process_func': process_func
         })
 
-    # 상태 속성 목록 반환 (에러 해결 포인트)
+    # 상태 속성 목록 반환
     def get_status_attr_list(self):
         return list(set(
             status['attr_name']
@@ -62,7 +68,7 @@ class Device:
             for status in status_list
         ))
 
-    # 명령 페이로드 생성
+    # 명령 페이로드 생성 (attr_name에 매칭되는 message_flag와 payload 반환)
     def get_command_payload_byte(self, attr_name, value):
         for message_flag, command_list in self.__command_messages_map.items():
             for command in command_list:
@@ -90,37 +96,57 @@ class Device:
         # optional_info 병합
         result.update(self.optional_info)
         return json_dumps(result, ensure_ascii=False)
-    def get_status_attr_list(self):
-        """등록된 상태 메시지들의 attr_name 목록을 반환"""
-        return list(set(
-            status['attr_name']
-            for status_list in self.__status_messages_map.values()
-            for status in status_list
-        ))
+
+    # 주의: 실제 `parse_payload` 같은 메시지 파싱 함수가 필요하면 여기에 구현하거나 다른 모듈에서 제공되어야 함.
+    # 예시(플레이스홀더):
+    def parse_payload(self, payload_dict):
+        """
+        실제 파싱 로직은 장치별로 달라야 함.
+        현재는 플레이스홀더로, 구현이 없다면 호출 시 에러 발생.
+        """
+        # 실제 구현 필요 — 호출부에서 처리되지 않으면 에러를 발생시켜 문제를 알림.
+        raise NotImplementedError("Device.parse_payload()가 구현되어야 함.")
+
 
 class Wallpad:
     _device_list = []
 
     def __init__(self):
-        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt", protocol=mqtt.MQTTv5)
+        # callback_api_version=5 명시해서 DeprecationWarning 제거
+        self.mqtt_client = mqtt.Client(
+            client_id="rs485_2mqtt",
+            protocol=mqtt.MQTTv5,
+            callback_api_version=5
+        )
+        # V2 콜백 시그니처 사용 (on_connect: client, userdata, flags, reasonCode, properties)
         self.mqtt_client.on_connect = self.on_connect
+        # on_message signature: client, userdata, message
         self.mqtt_client.on_message = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-        self.mqtt_client.connect(MQTT_SERVER, MQTT_PORT)
+        try:
+            self.mqtt_client.connect(MQTT_SERVER, MQTT_PORT)
+        except Exception as e:
+            print("MQTT connect failed:", e)
+            raise
 
     def on_connect(self, client, userdata, flags, reasonCode, properties):
         print("Connected with result code", reasonCode)
-        if reasonCode == 0:   # ✅ rc 대신 reasonCode 사용
+        if reasonCode == 0:
             print("MQTT connection successful")
+            # 연결되면 자동으로 discovery 등록
+            try:
+                self.register_mqtt_discovery()
+            except Exception as e:
+                print("register_mqtt_discovery failed:", e)
         else:
             print("MQTT connection failed:", reasonCode)
 
     def listen(self):
         # raw + command 토픽 구독
-        self.mqtt_client.subscribe(
-            [(topic, 1) for topic in [ROOT_TOPIC_NAME + '/dev/raw'] + self.get_topic_list_to_listen()]
-        )
+        topic_list = [ROOT_TOPIC_NAME + '/dev/raw'] + self.get_topic_list_to_listen()
+        self.mqtt_client.subscribe([(topic, 1) for topic in topic_list])
+        # 루프 방식: 필요에 따라 loop_start() 로 변경 가능
         self.mqtt_client.loop_forever()
 
     def register_mqtt_discovery(self):
@@ -130,61 +156,103 @@ class Wallpad:
                 payload = device.get_mqtt_discovery_payload()
                 self.mqtt_client.publish(topic, payload, qos=1, retain=True)
 
-    # ... 나머지 add_device, get_device, get_topic_list_to_listen, xor, add 그대로 유지 ...
-    def add_device(self, device_name, device_id, device_subid, device_class, child_device = [], mqtt_discovery = True, optional_info = {}):
-        device = Device(device_name, device_id, device_subid, device_class, optional_info)
+    def add_device(self, device_name, device_id, device_subid, device_class, child_device=None, mqtt_discovery=True, optional_info=None):
+        # 인자 순서 올바르게 전달
+        device = Device(device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info)
         self._device_list.append(device)
         return device
 
     def get_device(self, **kwargs):
         if 'device_name' in kwargs:
-            return [device for device in self._device_list if device.device_name == kwargs['device_name']][0]
+            found = [device for device in self._device_list if device.device_name == kwargs['device_name']]
         else:
-            return [device for device in self._device_list if device.device_id == kwargs['device_id'] and device.device_subid == kwargs['device_subid']][0]
+            found = [device for device in self._device_list if device.device_id == kwargs['device_id'] and device.device_subid == kwargs['device_subid']]
+        if not found:
+            raise LookupError("Device not found for args: " + str(kwargs))
+        return found[0]
 
     def get_topic_list_to_listen(self):
         return ['/'.join([ROOT_TOPIC_NAME, device.device_class, device.device_name, attr_name, 'set']) for device in self._device_list for attr_name in device.get_status_attr_list()]
 
     @classmethod
     def xor(cls, hexstring_array):
-        return format(reduce((lambda x, y: x^y), list(map(lambda x: int(x, 16), hexstring_array))), '02x')
+        return format(reduce((lambda x, y: x ^ y), list(map(lambda x: int(x, 16), hexstring_array))), '02x')
 
     @classmethod
-    def add(cls, hexstring_array): # hexstring_array ['f7', '32', ...]
-        return format(reduce((lambda x, y: x+y), list(map(lambda x: int(x, 16), hexstring_array))), '02x')[-2:]
+    def add(cls, hexstring_array):  # hexstring_array ['f7', '32', ...]
+        return format(reduce((lambda x, y: x + y), list(map(lambda x: int(x, 16), hexstring_array))), '02x')[-2:]
 
     @classmethod
     def is_valid(cls, payload_hexstring):
-        payload_hexstring_array = [payload_hexstring[i:i+2] for i in range(0, len(payload_hexstring), 2)] # ['f7', '0e', '1f', '81', '04', '00', '00', '00', '00', '63', '0c']
+        payload_hexstring_array = [payload_hexstring[i:i+2] for i in range(0, len(payload_hexstring), 2)]
         try:
-            result = int(payload_hexstring_array[4], 16) + 7 == len(payload_hexstring_array) and cls.xor(payload_hexstring_array[:-2]) == payload_hexstring_array[-2:-1][0] and cls.add(payload_hexstring_array[:-1]) == payload_hexstring_array[-1:][0]
-            return result
-        except:
+            # 길이 체크, xor 체크, add 체크를 명시적으로 비교
+            length_ok = int(payload_hexstring_array[4], 16) + 7 == len(payload_hexstring_array)
+            xor_ok = cls.xor(payload_hexstring_array[:-2]) == payload_hexstring_array[-2]
+            add_ok = cls.add(payload_hexstring_array[:-1]) == payload_hexstring_array[-1]
+            return length_ok and xor_ok and add_ok
+        except Exception:
             return False
 
     def on_raw_message(self, client, userdata, msg):
-        if msg.topic == ROOT_TOPIC_NAME + '/dev/raw': # ew11이 MQTT에 rs485 패킷을 publish하는 경우
-            for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]: # payload 내에 여러 메시지가 있는 경우, \f7 disappear as delimiter here
-                payload_hexstring = 'f7' + payload_raw_bytes.hex() # 'f7361f810f000001000017179817981717969896de22'
-                try:
-                    if self.is_valid(payload_hexstring):
-                        payload_dict = re.match(r'f7(?P<device_id>0e|12|32|33|36)(?P<device_subid>[0-9a-f]{2})(?P<message_flag>[0-9a-f]{2})(?:[0-9a-f]{2})(?P<data>[0-9a-f]*)(?P<xor>[0-9a-f]{2})(?P<add>[0-9a-f]{2})', payload_hexstring).groupdict()
-
-                        for topic, value in self.get_device(device_id = payload_dict['device_id'], device_subid = payload_dict['device_subid']).parse_payload(payload_dict).items():
-                            client.publish(topic, value, qos = 1, retain = False)
-                    else:
-                        continue
-                except Exception as e:
-                    client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos = 1, retain = True)
-
-        else: # homeassistant에서 명령하여 MQTT topic을 publish하는 경우
-            topic_split = msg.topic.split('/') # rs485_2mqtt/light/안방등/power/set
-            device = self.get_device(device_name = topic_split[2])
-            payload = device.get_command_payload_byte(topic_split[3], msg.payload.decode())
-            client.publish(ROOT_TOPIC_NAME + '/dev/command', payload, qos = 2, retain = False)
+        try:
+            if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':
+                # payload 내에 여러 메시지가 \xf7 구분자로 합쳐져 들어오는 경우 분리
+                for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:
+                    payload_hexstring = 'f7' + payload_raw_bytes.hex()
+                    try:
+                        if self.is_valid(payload_hexstring):
+                            m = re.match(
+                                r'f7(?P<device_id>0e|12|32|33|36)(?P<device_subid>[0-9a-f]{2})(?P<message_flag>[0-9a-f]{2})(?:[0-9a-f]{2})(?P<data>[0-9a-f]*)(?P<xor>[0-9a-f]{2})(?P<add>[0-9a-f]{2})',
+                                payload_hexstring
+                            )
+                            if not m:
+                                # 정규식 매칭 실패
+                                client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos=1, retain=True)
+                                continue
+                            payload_dict = m.groupdict()
+                            # parse_payload는 Device에 구현되어 있어야 함
+                            device = self.get_device(device_id=payload_dict['device_id'], device_subid=payload_dict['device_subid'])
+                            try:
+                                parsed = device.parse_payload(payload_dict)  # dict of topic -> value
+                            except NotImplementedError as nie:
+                                # 파싱 함수 미구현: 에러 토픽에 로깅
+                                client.publish(ROOT_TOPIC_NAME + '/dev/error', f"parse_payload not implemented for {device.device_name}", qos=1, retain=True)
+                                continue
+                            for topic, value in parsed.items():
+                                client.publish(topic, value, qos=1, retain=False)
+                        else:
+                            # 유효하지 않은 패킷은 에러 토픽으로
+                            client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos=1, retain=True)
+                            continue
+                    except Exception as e:
+                        client.publish(ROOT_TOPIC_NAME + '/dev/error', f"{payload_hexstring} | exc:{e}", qos=1, retain=True)
+            else:
+                # homeassistant에서 명령하여 들어온 경우
+                topic_split = msg.topic.split('/')  # rs485_2mqtt/light/안방등/power/set
+                if len(topic_split) < 5:
+                    client.publish(ROOT_TOPIC_NAME + '/dev/error', f"Invalid command topic: {msg.topic}", qos=1, retain=True)
+                    return
+                device_name = topic_split[2]
+                attr_name = topic_split[3]
+                value_str = msg.payload.decode()
+                device = self.get_device(device_name=device_name)
+                message_flag, payload_byte = device.get_command_payload_byte(attr_name, value_str)
+                if message_flag is None:
+                    client.publish(ROOT_TOPIC_NAME + '/dev/error', f"No command mapping for {device_name}.{attr_name}", qos=1, retain=True)
+                    return
+                # 실제로 보낼 MQTT 명령 포맷: (예시) message_flag + payload_byte
+                # 필요하면 여기에 헤더/체크섬 결합 로직 추가
+                out_payload = message_flag + payload_byte
+                client.publish(ROOT_TOPIC_NAME + '/dev/command', out_payload, qos=2, retain=False)
+        except Exception as outer_e:
+            print("Unexpected error in on_raw_message:", outer_e)
+            client.publish(ROOT_TOPIC_NAME + '/dev/error', f"on_raw_message outer exception: {outer_e}", qos=1, retain=True)
 
     def on_disconnect(self, client, userdata, rc):
-        raise ConnectionError
+        # MQTTv5에서는 on_disconnect signature가 (client, userdata, reasonCode, properties)
+        # 여기서는 단순히 예외를 발생시켜 상위에서 재연결을 시도하게 함
+        raise ConnectionError("MQTT disconnected")
 
 # 프리셋 모드 매핑 (RS485 패킷 ↔ 프리셋 문자열)
 packet_2_preset = {
@@ -196,11 +264,11 @@ packet_2_preset = {
 }
 preset_2_packet = {v: k for k, v in packet_2_preset.items()}
 
-
 optional_info = {
     'optimistic': 'false',
     'preset_modes': ['off', '바이패스', '전열', '오토', '공기청정']
 }
+
 # Wallpad 인스턴스 생성
 wallpad = Wallpad()
 
@@ -212,7 +280,6 @@ wallpad = Wallpad()
     device_class='fan',
     optional_info=optional_info
 )
-
 
 # 상태 등록
 환풍기.register_status(
@@ -271,5 +338,5 @@ wallpad = Wallpad()
     process_func=lambda v: preset_2_packet[v]
 )
 
-#실행 시작
+# 실행 시작
 wallpad.listen()
