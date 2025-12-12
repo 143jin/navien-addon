@@ -111,11 +111,10 @@ class Wallpad:
 
     def on_connect(self, client, userdata, flags, reasonCode, properties):
         print("Connected with result code", reasonCode)
-        if rc == 0:
-            print("✅ MQTT 연결 성공")
-            self.register_mqtt_discovery()
+        if reasonCode == 0:   # ✅ rc 대신 reasonCode 사용
+            print("MQTT connection successful")
         else:
-            print("❌ MQTT 연결 실패, 코드:", rc)
+            print("MQTT connection failed:", reasonCode)
 
     def listen(self):
         # raw + command 토픽 구독
