@@ -102,7 +102,7 @@ class Wallpad:
     _device_list = []
 
     def __init__(self):
-        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt", protocol=mqtt.MQTTv311)
+        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt")
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
