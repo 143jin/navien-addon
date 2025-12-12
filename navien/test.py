@@ -21,7 +21,7 @@ HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
 class Device:
     def __init__(self, device_name, device_id, device_subid, device_class,
-             child_device=None, mqtt_discovery=None, optional_info=None):
+                 child_device=None, mqtt_discovery=None, optional_info=None):
         self.device_name = device_name
         self.device_id = device_id
         self.device_subid = device_subid
