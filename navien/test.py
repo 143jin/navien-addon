@@ -20,15 +20,18 @@ MQTT_RAW_TOPIC = "rs485_2mqtt/dev/raw"
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
 class Device:
-    def __init__(self, device_name, device_id, device_subid, device_class, optional_info=None):
-        self.device_name = device_name
-        self.device_id = device_id
-        self.device_subid = device_subid
-        self.device_class = device_class
-        self.device_unique_id = f"rs485_{device_id}_{device_subid}"
-        self.__status_messages_map = {}
-        self.__command_messages_map = {}
-        self.optional_info = optional_info or {}
+    def __init__(self, device_name, device_id, device_subid, device_class,
+             child_device=None, mqtt_discovery=None, optional_info=None):
+    self.device_name = device_name
+    self.device_id = device_id
+    self.device_subid = device_subid
+    self.device_class = device_class
+    self.device_unique_id = f"rs485_{device_id}_{device_subid}"
+    self.__status_messages_map = {}
+    self.__command_messages_map = {}
+    self.child_device = child_device
+    self.mqtt_discovery = mqtt_discovery
+    self.optional_info = optional_info or {}
 
     # 상태 등록
     def register_status(self, message_flag, attr_name, topic_class, regex, process_func):
@@ -129,7 +132,7 @@ class Wallpad:
 
     # ... 나머지 add_device, get_device, get_topic_list_to_listen, xor, add 그대로 유지 ...
     def add_device(self, device_name, device_id, device_subid, device_class, child_device = [], mqtt_discovery = True, optional_info = {}):
-        device = Device(device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info)
+        device = Device(device_name, device_id, device_subid, device_class, optional_info)
         self._device_list.append(device)
         return device
 
