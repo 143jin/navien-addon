@@ -102,14 +102,15 @@ class Wallpad:
     _device_list = []
 
     def __init__(self):
-        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt")
+        self.mqtt_client = mqtt.Client(client_id="rs485_2mqtt", protocol=mqtt.MQTTv5)
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
         self.mqtt_client.connect(MQTT_SERVER, MQTT_PORT)
 
-    def on_connect(self, client, userdata, flags, rc, properties=None):
+    def on_connect(self, client, userdata, flags, reasonCode, properties):
+        print("Connected with result code", reasonCode)
         if rc == 0:
             print("✅ MQTT 연결 성공")
             self.register_mqtt_discovery()
