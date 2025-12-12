@@ -182,12 +182,14 @@ packet_2_preset = {
 preset_2_packet = {v: k for k, v in packet_2_preset.items()}
 
 
-### 환풍기 ###
 optional_info = {
     'optimistic': 'false',
     'preset_modes': ['off', '바이패스', '전열', '오토', '공기청정']
 }
+# Wallpad 인스턴스 생성
+wallpad = Wallpad()
 
+# 환풍기 등록
 환풍기 = wallpad.add_device(
     device_name='환풍기',
     device_id='32',
@@ -195,6 +197,7 @@ optional_info = {
     device_class='fan',
     optional_info=optional_info
 )
+
 
 # 상태 등록
 환풍기.register_status(
@@ -253,5 +256,5 @@ optional_info = {
     process_func=lambda v: preset_2_packet[v]
 )
 
-wallpad = Wallpad()
+#실행 시작
 wallpad.listen()
