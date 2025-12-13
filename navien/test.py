@@ -245,11 +245,11 @@ class Wallpad:
             print("Unexpected error in on_raw_message:", outer_e)
             client.publish(ROOT_TOPIC_NAME + '/dev/error', f"on_raw_message outer exception: {outer_e}", qos=1, retain=True)
 
-    def on_disconnect(self, client, userdata, rc):
-        # MQTTv5에서는 on_disconnect signature가 (client, userdata, reasonCode, properties)
-        # 여기서는 단순히 예외를 발생시켜 상위에서 재연결을 시도하게 함
+    def on_disconnect(self, client, userdata, reasonCode, properties):
+    # MQTTv5에서는 on_disconnect signature가 (client, userdata, reasonCode, properties)
+        print("Disconnected with result code", reasonCode)
+    # 연결이 끊어지면 예외를 발생시켜 상위 로직에서 재연결을 시도하게 함
         raise ConnectionError("MQTT disconnected")
-
 # 프리셋 모드 매핑 (RS485 패킷 ↔ 프리셋 문자열)
 packet_2_preset = {
     "01": "바이패스",
