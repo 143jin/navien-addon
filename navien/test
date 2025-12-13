@@ -116,7 +116,7 @@ class Wallpad:
         self.mqtt_client = mqtt.Client(
             client_id="rs485_2mqtt",
             protocol=mqtt.MQTTv5,
-            callback_api_version=CallbackAPIVersion.V5
+            callback_api_version=CallbackAPIVersion.VERSION2
         )
 
         # V2 콜백 시그니처 사용 (on_connect: client, userdata, flags, reasonCode, properties)
