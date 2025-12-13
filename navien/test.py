@@ -145,10 +145,7 @@ class Wallpad:
     # MQTT callbacks
     # -------------------------------
     def on_connect(self, client, userdata, flags, reasonCode, properties):
-        rc = int(reasonCode)
-        print("MQTT connect reasonCode:", rc)
-
-        if rc == 0:
+        if reasonCode.value == 0:
             print("MQTT connection successful")
             self.register_mqtt_discovery()
             self.subscribe_topics()
