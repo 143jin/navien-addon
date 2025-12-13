@@ -116,8 +116,9 @@ class Wallpad:
         self.mqtt_client = mqtt.Client(
             client_id="rs485_2mqtt",
             protocol=mqtt.MQTTv5,
-            callback_api_version=5
+            callback_api_version=CallbackAPIVersion.V5
         )
+
         # V2 콜백 시그니처 사용 (on_connect: client, userdata, flags, reasonCode, properties)
         self.mqtt_client.on_connect = self.on_connect
         # on_message signature: client, userdata, message
@@ -132,13 +133,8 @@ class Wallpad:
 
     def on_connect(self, client, userdata, flags, reasonCode, properties):
         print("Connected with result code", reasonCode)
-        if reasonCode == 0:
+        if int(reasonCode) == 0:
             print("MQTT connection successful")
-            # 연결되면 자동으로 discovery 등록
-            try:
-                self.register_mqtt_discovery()
-            except Exception as e:
-                print("register_mqtt_discovery failed:", e)
         else:
             print("MQTT connection failed:", reasonCode)
 
