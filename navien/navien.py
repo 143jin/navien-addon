@@ -13,10 +13,10 @@ def load_config():
 # 여기서 config를 반드시 정의해야 함
 config = load_config()
 
-MQTT_SERVER   = config["MQTT"]["server"]
-MQTT_PORT     = config["MQTT"]["port"]
-MQTT_USERNAME = config["MQTT"]["username"]
-MQTT_PASSWORD = config["MQTT"]["password"]
+MQTT_SERVER   = config["server"]
+MQTT_PORT     = config["port"]
+MQTT_USERNAME = config["username"]
+MQTT_PASSWORD = config["password"]
 
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
