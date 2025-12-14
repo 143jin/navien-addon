@@ -1,9 +1,6 @@
+import json
 import paho.mqtt.client as mqtt
 import re
-import json
-from json import dumps as json_dumps
-from functools import reduce
-from collections import defaultdict
 
 def load_config():
     try:
@@ -13,15 +10,17 @@ def load_config():
         print("Failed to load config:", e)
         raise
 
+# 여기서 config를 반드시 정의해야 함
 config = load_config()
 
-MQTT_SERVER = config["MQTT"]["server"]
+MQTT_SERVER   = config["MQTT"]["server"]
+MQTT_PORT     = config["MQTT"]["port"]
 MQTT_USERNAME = config["MQTT"]["username"]
 MQTT_PASSWORD = config["MQTT"]["password"]
-MQTT_PORT   = config["MQTT"]["port"]
 
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
+
 
 class Device:
     def __init__(self, device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info):
