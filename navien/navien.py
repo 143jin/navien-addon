@@ -1,11 +1,9 @@
 import paho.mqtt.client as mqtt
-from paho.mqtt.client
 import re
 import json
 from json import dumps as json_dumps
 from functools import reduce
 from collections import defaultdict
-import configparser
 
 def load_config():
     try:
@@ -21,6 +19,7 @@ MQTT_SERVER = config["MQTT"]["server"]
 MQTT_USERNAME = config["MQTT"]["username"]
 MQTT_PASSWORD = config["MQTT"]["password"]
 MQTT_PORT   = config["MQTT"]["port"]
+
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
