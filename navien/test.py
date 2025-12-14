@@ -84,15 +84,12 @@ class Device:
     # Helpers
     # -------------------------------
     def get_status_attr_list(self):
-        return list({s['attr_name']
-                     for lst in self._status_messages_map.values()
-                     for s in lst})
+        return [status['attr_name'] for status in self.status_list]
 
     def get_command_payload_byte(self, attr_name, value):
-        for flag, cmds in self._command_messages_map.items():
-            for cmd in cmds:
-                if cmd['attr_name'] == attr_name:
-                    return flag, cmd['process_func'](value)
+        for cmd in self.command_list:
+            if cmd['attr_name'] == attr_name:
+                return cmd['message_flag'], cmd['process_func'](value)
         return None, None
 
     # -------------------------------
