@@ -10,14 +10,13 @@ def load_config():
         return json.load(f)
 
 config = load_config()
-print("CONFIG LOADED:", config)
 
-mqtt = config["MQTT"]
+mqtt_conf = config["MQTT"]
 
-MQTT_SERVER   = mqtt["server"]
-MQTT_PORT     = mqtt["port"]
-MQTT_USERNAME = mqtt["username"]
-MQTT_PASSWORD = mqtt["password"]
+MQTT_SERVER   = mqtt_conf["server"]
+MQTT_PORT     = mqtt_conf["port"]
+MQTT_USERNAME = mqtt_conf["username"]
+MQTT_PASSWORD = mqtt_conf["password"]
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
