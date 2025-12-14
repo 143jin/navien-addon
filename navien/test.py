@@ -105,22 +105,14 @@ class Device:
     # -------------------------------
     # Payload parsing (핵심)
     # -------------------------------
-    def parse_payload(self, payload_dict):
-        result = {}
-        flag = payload_dict['message_flag']
-        data = payload_dict['data']
-
-        for status in self._status_messages_map.get(flag, []):
-            m = re.match(status['regex'], data)
-            if not m:
-                continue
-            d = self.get_device(device_id=m['device_id'], device_subid=m['device_subid']) parsed = d.parse_payload(m)   # groupdict() 말고 match 객체 그대로 넘김
-
-            value = status['process_func'](m.group(1) if m.groups() else None)
-            topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
-            result[topic] = value
-
-        return result
+    def parse_payload(self, m: re.Match):
+    result = {}
+    for status in self.status_list:
+        # 정규식 캡쳐 그룹 값 → process_func으로 변환
+        value = status['process_func'](m.group(1) if m.groups() else None)
+        topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
+        result[topic] = value
+    return result
 
 # ==========================================================
 # Wallpad
@@ -212,7 +204,7 @@ class Wallpad:
                 continue
 
             m = re.match(
-                r'f7(?P<device_id>0e|12|32|36)'
+                r'f7(?P<device_id>0e|12|32|36)'   # 33 제거 (일괄차단기 무시)
                 r'(?P<device_subid>[0-9a-f]{2})'
                 r'(?P<message_flag>[0-9a-f]{2})'
                 r'(?:[0-9a-f]{2})'
@@ -223,7 +215,7 @@ class Wallpad:
                 continue
 
             d = self.get_device(device_id=m['device_id'], device_subid=m['device_subid'])
-            parsed = d.parse_payload(m.groupdict())
+            parsed = d.parse_payload(m)   # match 객체 그대로 넘김
             for topic, value in parsed.items():
                 client.publish(topic, value, qos=1)
 
@@ -352,7 +344,7 @@ optional_info = {'optimistic': 'false'}
 안방등     = wallpad.add_device("안방등",  "0e", "21", "light", optional_info=optional_info)
 대피공간등 = wallpad.add_device("대피공간등", "0e", "22", "light", optional_info=optional_info)
 
-# 그룹 엔티티 (UI에 노출되도록 mqtt_discovery=True)
+# 그룹 엔티티 (UI에 노출하지 않음 → mqtt_discovery=False)
 거실등전체 = wallpad.add_device(
     device_name="거실등 전체",
     device_id="0e",
@@ -389,33 +381,14 @@ optional_info = {'optimistic': 'false'}
 대피공간등.register_status("81", "power", "state_topic", r'000[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
 
 # ----------------------------------------------------------
-# 그룹 상태 보고 (패킷 직접 판별)
-# ----------------------------------------------------------
-# 거실등 전체: 6개 조명 상태 필드 중 하나라도 '01'이면 ON, 모두 '00'이면 OFF
-거실등전체.register_status(
-    "81", "power", "state_topic",
-    regex=r'00((?:0[01]){6})',
-    process_func=lambda v: "ON" if "1" in v else "OFF"
-)
-
-# 안방등 전체: 2개 조명 상태 필드 중 하나라도 '01'이면 ON, 모두 '00'이면 OFF
-안방등전체.register_status(
-    "81", "power", "state_topic",
-    regex=r'00((?:0[01]){2})',
-    process_func=lambda v: "ON" if "1" in v else "OFF"
-)
-
-# ----------------------------------------------------------
 # 제어 명령
 # ----------------------------------------------------------
-# 개별 조명 제어
 for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
     light.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
 
-# 그룹 제어: OFF → 전체 끄기, ON → 전체 켜기
+# 그룹 제어 (UI에는 안 보이지만 내부적으로 전체 제어 가능)
 거실등전체.register_command("41", "power", "command_topic", lambda v: "00" if v == "OFF" else "01")
 안방등전체.register_command("41", "power", "command_topic", lambda v: "00" if v == "OFF" else "01")
-
 # ==========================================================
 # 보일러 (난방)
 # ==========================================================
