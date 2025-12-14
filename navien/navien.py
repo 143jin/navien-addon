@@ -3,7 +3,6 @@ import re
 import time
 from functools import reduce
 from collections import defaultdict
-
 import paho.mqtt.client as mqtt
 
 print("### NAVIEN START ###")
