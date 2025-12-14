@@ -30,6 +30,9 @@ HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 # ==========================================================
 # Device
 # ==========================================================
+from collections import defaultdict
+import re
+
 class Device:
     def __init__(self, device_name, device_id, device_subid, device_class,
                  child_device=None, mqtt_discovery=True, optional_info=None):
@@ -39,30 +42,43 @@ class Device:
         self.device_class = device_class
         self.device_unique_id = f"rs485_{device_id}_{device_subid}"
 
-        self._status_messages_map = defaultdict(list)
-        self._command_messages_map = defaultdict(list)
+        # 상태/명령 리스트 초기화
+        self.status_list = []
+        self.command_list = []
 
+        # 옵션
         self.child_device = child_device
         self.mqtt_discovery = mqtt_discovery
         self.optional_info = optional_info or {}
 
-    # -------------------------------
-    # Registration
-    # -------------------------------
+    # 상태 등록
     def register_status(self, message_flag, attr_name, topic_class, regex, process_func):
-        self._status_messages_map[message_flag].append({
+        self.status_list.append({
+            'message_flag': message_flag,
             'attr_name': attr_name,
             'topic_class': topic_class,
             'regex': regex,
             'process_func': process_func
         })
 
+    # 명령 등록
     def register_command(self, message_flag, attr_name, topic_class, process_func):
-        self._command_messages_map[message_flag].append({
+        self.command_list.append({
+            'message_flag': message_flag,
             'attr_name': attr_name,
             'topic_class': topic_class,
             'process_func': process_func
         })
+
+    # 패킷 해석
+    def parse_payload(self, m: re.Match):
+        result = {}
+        for status in self.status_list:
+            # 정규식 캡쳐 그룹 값 → process_func으로 변환
+            value = status['process_func'](m.group(1) if m.groups() else None)
+            topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
+            result[topic] = value
+        return result
 
     # -------------------------------
     # Helpers
@@ -102,17 +118,8 @@ class Device:
         payload.update(self.optional_info)
         return json_dumps(payload, ensure_ascii=False)
 
-    # -------------------------------
-    # Payload parsing (핵심)
-    # -------------------------------
-    def parse_payload(self, m: re.Match):
-        result = {}
-        for status in self.status_list:
-        # 정규식 캡쳐 그룹 값 → process_func으로 변환
-            value = status['process_func'](m.group(1) if m.groups() else None)
-            topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
-            result[topic] = value
-        return result
+
+
 
 # ==========================================================
 # Wallpad
