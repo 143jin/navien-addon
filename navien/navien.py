@@ -2,16 +2,14 @@ import json
 import paho.mqtt.client as mqtt
 import re
 
-def load_config():
-    try:
-        with open('/data/options.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print("Failed to load config:", e)
-        raise
+print("### NAVIEN START ###")
 
-# 여기서 config를 반드시 정의해야 함
+def load_config():
+    with open('/data/options.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
+
 config = load_config()
+print("CONFIG LOADED:", config)
 
 mqtt = config["MQTT"]
 
@@ -19,7 +17,6 @@ MQTT_SERVER   = mqtt["server"]
 MQTT_PORT     = mqtt["port"]
 MQTT_USERNAME = mqtt["username"]
 MQTT_PASSWORD = mqtt["password"]
-
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
