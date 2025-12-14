@@ -106,13 +106,13 @@ class Device:
     # Payload parsing (핵심)
     # -------------------------------
     def parse_payload(self, m: re.Match):
-    result = {}
-    for status in self.status_list:
+        result = {}
+        for status in self.status_list:
         # 정규식 캡쳐 그룹 값 → process_func으로 변환
-        value = status['process_func'](m.group(1) if m.groups() else None)
-        topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
-        result[topic] = value
-    return result
+            value = status['process_func'](m.group(1) if m.groups() else None)
+            topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
+            result[topic] = value
+        return result
 
 # ==========================================================
 # Wallpad
