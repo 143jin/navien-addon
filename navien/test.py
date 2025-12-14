@@ -114,6 +114,7 @@ class Device:
             m = re.match(status['regex'], data)
             if not m:
                 continue
+            d = self.get_device(device_id=m['device_id'], device_subid=m['device_subid']) parsed = d.parse_payload(m)   # groupdict() 말고 match 객체 그대로 넘김
 
             value = status['process_func'](m.group(1) if m.groups() else None)
             topic = f"{ROOT_TOPIC_NAME}/{self.device_class}/{self.device_name}/{status['attr_name']}"
@@ -357,7 +358,7 @@ optional_info = {'optimistic': 'false'}
     device_id="0e",
     device_subid="1f",
     device_class="light",
-    mqtt_discovery=True,
+    mqtt_discovery=False,
     child_device=[거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]
 )
 
@@ -366,7 +367,7 @@ optional_info = {'optimistic': 'false'}
     device_id="0e",
     device_subid="2f",
     device_class="light",
-    mqtt_discovery=True,
+    mqtt_discovery=False,
     child_device=[안방등, 대피공간등]
 )
 
