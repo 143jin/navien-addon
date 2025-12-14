@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 /usr/src/app/test.py
+python3 /usr/src/app/navien.py
