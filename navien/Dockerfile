@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /usr/src/app
 
 # 코드 복사
-COPY test.py .
+COPY navien.py .
 COPY run.sh .
 COPY requirements.txt .
 
