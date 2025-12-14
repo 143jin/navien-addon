@@ -3,6 +3,7 @@ import paho.mqtt.client as mqtt
 import re
 
 print("### NAVIEN START ###")
+print("FILE:", __file__)
 
 def load_config():
     with open('/data/options.json', 'r', encoding='utf-8') as f:
