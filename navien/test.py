@@ -284,4 +284,213 @@ fan.register_status("81", "preset_mode", "preset_mode_state_topic", r'000[01](0[
 fan.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
 fan.register_command("43", "preset_mode", "preset_mode_command_topic", lambda v: preset_2_packet[v])
 
+# ==========================================================
+# 가스밸브 (Gas Valve)
+# ==========================================================
+
+gas_optional_info = {
+    "optimistic": "false"
+}
+
+gas_valve = wallpad.add_device(
+    device_name="가스 차단기",
+    device_id="12",
+    device_subid="01",
+    device_class="switch",
+    optional_info=gas_optional_info
+)
+
+# 가용성 상태 (항상 online으로 표시)
+gas_valve.register_status(
+    message_flag="01",
+    attr_name="availability",
+    topic_class="availability_topic",
+    regex=r'()',
+    process_func=lambda v: "online"
+)
+
+# 전원 상태 (81 플래그)
+gas_valve.register_status(
+    message_flag="81",
+    attr_name="power",
+    topic_class="state_topic",
+    regex=r'00(0[12])',
+    process_func=lambda v: "ON" if v == "01" else "OFF"
+)
+
+# 전원 상태 (c1 플래그, 일부 시스템에서 중복 보고)
+gas_valve.register_status(
+    message_flag="c1",
+    attr_name="power",
+    topic_class="state_topic",
+    regex=r'00(0[12])',
+    process_func=lambda v: "ON" if v == "01" else "OFF"
+)
+
+# 제어 명령 (ON/OFF)
+gas_valve.register_command(
+    message_flag="41",
+    attr_name="power",
+    topic_class="command_topic",
+    process_func=lambda v: "01" if v == "ON" else "00"
+)
+
+# ==========================================================
+# 조명 (Lights)
+# ==========================================================
+
+light_optional_info = {"optimistic": "false"}
+
+# 개별 조명 등록
+거실등1 = wallpad.add_device("거실등1", "0e", "11", "light", optional_info=light_optional_info)
+거실등2 = wallpad.add_device("거실등2", "0e", "12", "light", optional_info=light_optional_info)
+간접등  = wallpad.add_device("간접등",  "0e", "13", "light", optional_info=light_optional_info)
+주방등  = wallpad.add_device("주방등",  "0e", "14", "light", optional_info=light_optional_info)
+식탁등  = wallpad.add_device("식탁등",  "0e", "15", "light", optional_info=light_optional_info)
+복도등  = wallpad.add_device("복도등",  "0e", "16", "light", optional_info=light_optional_info)
+안방등  = wallpad.add_device("안방등",  "0e", "21", "light", optional_info=light_optional_info)
+대피공간등 = wallpad.add_device("대피공간등", "0e", "22", "light", optional_info=light_optional_info)
+
+# 그룹 조명 등록 (엔티티로 노출)
+거실등전체 = wallpad.add_device(
+    device_name="거실등 전체",
+    device_id="0e",
+    device_subid="1f",
+    device_class="light",
+    child_device=[거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]
+)
+
+안방등전체 = wallpad.add_device(
+    device_name="안방등 전체",
+    device_id="0e",
+    device_subid="2f",
+    device_class="light",
+    child_device=[안방등, 대피공간등]
+)
+
+# 그룹 가용성 상태
+거실등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
+안방등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
+
+# 개별 조명 상태 (81 플래그)
+거실등1.register_status("81", "power", "state_topic", r'00(0[01])0[01]0[01]', lambda v: "ON" if v == "01" else "OFF")
+거실등2.register_status("81", "power", "state_topic", r'000[01](0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
+간접등.register_status("81", "power", "state_topic", r'000[01]0[01](0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
+주방등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
+식탁등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
+복도등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
+안방등.register_status("81", "power", "state_topic", r'00(0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
+대피공간등.register_status("81", "power", "state_topic", r'000[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
+
+# 개별 조명 상태 (c1 플래그, 중복 보고 대비)
+for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
+    light.register_status("c1", "power", "state_topic", r'00(0[01])', lambda v: "ON" if v == "01" else "OFF")
+
+# 개별 조명 제어 명령
+for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
+    light.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
+
+# 그룹 상태 계산 함수 (하나라도 켜져있으면 ON)
+def group_state(devices):
+    return "ON" if any(d.state == "ON" for d in devices) else "OFF"
+
+# 그룹 상태 등록
+거실등전체.register_status("81", "power", "state_topic", r'.*', lambda v: group_state([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]))
+안방등전체.register_status("81", "power", "state_topic", r'.*', lambda v: group_state([안방등, 대피공간등]))
+
+# 그룹 제어 명령 (ON → 모든 자식 켜짐, OFF → 모든 자식 꺼짐)
+def group_command(devices, value):
+    cmd = "01" if value == "ON" else "00"
+    for d in devices:
+        d.send_command("power", cmd)
+    return cmd
+
+거실등전체.register_command("41", "power", "command_topic", lambda v: group_command([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등], v))
+안방등전체.register_command("41", "power", "command_topic", lambda v: group_command([안방등, 대피공간등], v))
+
+
+# ==========================================================
+# 보일러 (난방)
+# ==========================================================
+
+boiler_optional_info = {
+    "preset_modes": ["난방", "외출", "온수", "off"],
+    "temp_step": 1.0,
+    "precision": 1.0,
+    "min_temp": 5.0,
+    "max_temp": 45.0,
+    "send_if_off": "false"
+}
+
+# 개별 난방 엔티티
+거실난방   = wallpad.add_device("거실 난방",   "36", "11", "climate", optional_info=boiler_optional_info)
+안방난방   = wallpad.add_device("안방 난방",   "36", "12", "climate", optional_info=boiler_optional_info)
+확장난방   = wallpad.add_device("확장 난방",   "36", "13", "climate", optional_info=boiler_optional_info)
+제인이방난방 = wallpad.add_device("제인이방 난방", "36", "14", "climate", optional_info=boiler_optional_info)
+팬트리난방 = wallpad.add_device("팬트리 난방", "36", "15", "climate", optional_info=boiler_optional_info)
+
+# 그룹 난방 엔티티
+난방전체 = wallpad.add_device(
+    device_name="난방 전체",
+    device_id="36",
+    device_subid="1f",
+    device_class="climate",
+    child_device=[거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방]
+)
+
+# 그룹 가용성 상태
+난방전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
+
+# ----------------------------------------------------------
+# 상태 보고 (81 응답 패킷)
+# ----------------------------------------------------------
+# 모드 플래그 cc dd ee ff → 난방, 외출, 예약, 온수
+# 비트마스크: 1=조절기1, 2=조절기2, 4=조절기3, 8=조절기4, 16=조절기5
+
+def parse_mode(value, bit_index, label):
+    return label if (int(value, 16) >> bit_index) & 1 else "off"
+
+# 난방 모드
+거실난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'..(..)..............',
+    lambda v: parse_mode(v, 0, "난방"))
+안방난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'..(..)..............',
+    lambda v: parse_mode(v, 1, "난방"))
+확장난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'..(..)..............',
+    lambda v: parse_mode(v, 2, "난방"))
+제인이방난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'..(..)..............',
+    lambda v: parse_mode(v, 3, "난방"))
+팬트리난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'..(..)..............',
+    lambda v: parse_mode(v, 4, "난방"))
+
+# 외출 모드
+거실난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'....(..)............',
+    lambda v: "외출" if int(v,16)&1 else "off")
+# 동일하게 안방/확장/제인이방/팬트리 난방에 적용 가능
+
+# 온수 모드
+거실난방.register_status("81", "preset_mode", "preset_mode_state_topic", r'........(..)........',
+    lambda v: "온수" if int(v,16)&1 else "off")
+# 동일하게 각 방에 적용
+
+# 목표온도 / 현재온도
+거실난방.register_status("81", "temperature", "temperature_state_topic", r'........(..)........',
+    lambda v: int(v,16)%128 + int(v,16)//128*0.5)
+거실난방.register_status("81", "current_temperature", "current_temperature_topic", r'..........(..)......',
+    lambda v: int(v,16)%128 + int(v,16)//128*0.5)
+# 동일하게 안방/확장/제인이방/팬트리 난방에 적용
+
+# ----------------------------------------------------------
+# 제어 명령
+# ----------------------------------------------------------
+# 그룹 제어
+난방전체.register_command("43", "preset_mode", "preset_mode_command_topic",
+    lambda v: {"난방":"01","외출":"02","온수":"03","off":"00"}[v])
+
+# 개별 제어
+for room in [거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방]:
+    room.register_command("43", "preset_mode", "preset_mode_command_topic",
+        lambda v: {"난방":"01","외출":"02","온수":"03","off":"00"}[v])
+    room.register_command("44", "temperature", "temperature_command_topic",
+        lambda v: format(int(float(v)//1 + float(v)%1*128*2), '02x'))
+
 wallpad.loop()
