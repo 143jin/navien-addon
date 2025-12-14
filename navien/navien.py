@@ -1,5 +1,5 @@
 import paho.mqtt.client as mqtt
-from paho.mqtt.client import CallbackAPIVersion, ReasonCodes
+from paho.mqtt.client
 import re
 import json
 from json import dumps as json_dumps
