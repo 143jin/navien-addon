@@ -211,7 +211,7 @@ class Wallpad:
                 continue
 
             m = re.match(
-                r'f7(?P<device_id>0e|12|32|33|36)'
+                r'f7(?P<device_id>0e|12|32|36)'
                 r'(?P<device_subid>[0-9a-f]{2})'
                 r'(?P<message_flag>[0-9a-f]{2})'
                 r'(?:[0-9a-f]{2})'
@@ -392,7 +392,7 @@ for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등
 
 # 그룹 상태 계산 함수 (하나라도 켜져있으면 ON)
 def group_state(devices):
-    return "ON" if any(d.state == "ON" for d in devices) else "OFF"
+    return "ON" if any(d.get_status("power") == "ON" for d in devices) else "OFF"
 
 # 그룹 상태 등록
 거실등전체.register_status("81", "power", "state_topic", r'.*', lambda v: group_state([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]))
