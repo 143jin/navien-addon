@@ -1,35 +1,43 @@
 import json
-import paho.mqtt.client as mqtt
 import re
+import time
+from functools import reduce
+from collections import defaultdict
+
+import paho.mqtt.client as mqtt
 
 print("### NAVIEN START ###")
 print("FILE:", __file__)
 
 def load_config():
-    with open('/data/options.json', 'r', encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        with open("/data/options.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print("Failed to load options.json:", e)
+        raise
 
 config = load_config()
 
-mqtt_conf = config["MQTT"]
+broker = config.get("broker", {})
 
-MQTT_SERVER   = mqtt_conf["server"]
-MQTT_PORT     = mqtt_conf["port"]
-MQTT_USERNAME = mqtt_conf["username"]
-MQTT_PASSWORD = mqtt_conf["password"]
+MQTT_SERVER = broker.get("server", "localhost")
+MQTT_PORT = int(broker.get("port", 1883))
+MQTT_USERNAME = broker.get("username")
+MQTT_PASSWORD = broker.get("password")
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
 
 class Device:
-    def __init__(self, device_name, device_id, device_subid, device_class, child_device, mqtt_discovery, optional_info):
+    def __init__(self, device_name, device_id, device_subid, device_class, child_device, _discovery, optional_info):
         self.device_name = device_name
         self.device_id = device_id
         self.device_subid = device_subid
         self.device_unique_id = 'rs485_' + self.device_id + '_' + self.device_subid
         self.device_class = device_class
         self.child_device = child_device
-        self.mqtt_discovery = mqtt_discovery
+        self._discovery = _discovery
         self.optional_info = optional_info
 
         self.__message_flag = {}            # {'power': '41'}
@@ -62,7 +70,7 @@ class Device:
         command_payload.append(Wallpad.add(command_payload))
         return bytearray.fromhex(' '.join(command_payload))
 
-    def get_mqtt_discovery_payload(self):
+    def get__discovery_payload(self):
         result = {
             '~': '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
             'name': self.device_name,
@@ -87,9 +95,12 @@ class Device:
 
 class Wallpad:
     _device_list = []
+    
+
 
     def __init__(self):
-        self.mqtt_client = mqtt.Client()
+        print("DEBUG :", , type())
+        self._client = mqtt.Client()
         self.mqtt_client.on_message    = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
