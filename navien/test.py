@@ -370,12 +370,12 @@ optional_info = {'optimistic': 'false'}
     child_device=[안방등, 대피공간등]
 )
 
-# 그룹 가용성 상태
+# 가용성
 거실등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
 안방등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
 
 # ----------------------------------------------------------
-# 개별 조명 상태 보고
+# 개별 상태 보고 (81 패킷)
 # ----------------------------------------------------------
 거실등1.register_status("81", "power", "state_topic", r'00(0[01])0[01]0[01]', lambda v: "ON" if v == "01" else "OFF")
 거실등2.register_status("81", "power", "state_topic", r'000[01](0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
@@ -383,19 +383,26 @@ optional_info = {'optimistic': 'false'}
 주방등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
 식탁등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
 복도등.register_status("81", "power", "state_topic", r'000[01]0[01]0[01]0[01]0[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
+
 안방등.register_status("81", "power", "state_topic", r'00(0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
 대피공간등.register_status("81", "power", "state_topic", r'000[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
 
 # ----------------------------------------------------------
-# 그룹 상태 보고 (자식 중 하나라도 ON이면 그룹 ON)
+# 그룹 상태 보고 (패킷 직접 판별)
 # ----------------------------------------------------------
-def group_state(devices):
-    return "ON" if any(dev.last_value == "ON" for dev in devices) else "OFF"
+# 거실등 전체: 6개 조명 상태 필드 중 하나라도 '01'이면 ON, 모두 '00'이면 OFF
+거실등전체.register_status(
+    "81", "power", "state_topic",
+    regex=r'00((?:0[01]){6})',
+    process_func=lambda v: "ON" if "1" in v else "OFF"
+)
 
-거실등전체.register_status("81", "power", "state_topic", r'.*',
-    lambda v: group_state([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]))
-안방등전체.register_status("81", "power", "state_topic", r'.*',
-    lambda v: group_state([안방등, 대피공간등]))
+# 안방등 전체: 2개 조명 상태 필드 중 하나라도 '01'이면 ON, 모두 '00'이면 OFF
+안방등전체.register_status(
+    "81", "power", "state_topic",
+    regex=r'00((?:0[01]){2})',
+    process_func=lambda v: "ON" if "1" in v else "OFF"
+)
 
 # ----------------------------------------------------------
 # 제어 명령
@@ -404,11 +411,9 @@ def group_state(devices):
 for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
     light.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
 
-# 그룹 제어 (OFF → 전체 끄기)
-거실등전체.register_command("41", "power", "command_topic",
-    lambda v: "00" if v == "OFF" else "01")
-안방등전체.register_command("41", "power", "command_topic",
-    lambda v: "00" if v == "OFF" else "01")
+# 그룹 제어: OFF → 전체 끄기, ON → 전체 켜기
+거실등전체.register_command("41", "power", "command_topic", lambda v: "00" if v == "OFF" else "01")
+안방등전체.register_command("41", "power", "command_topic", lambda v: "00" if v == "OFF" else "01")
 
 # ==========================================================
 # 보일러 (난방)
