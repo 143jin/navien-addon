@@ -336,27 +336,28 @@ gas_valve.register_command(
 )
 
 # ==========================================================
-# 조명 (Lights)
+# 조명
 # ==========================================================
 
-light_optional_info = {"optimistic": "false"}
+optional_info = {'optimistic': 'false'}
 
-# 개별 조명 등록
-거실등1 = wallpad.add_device("거실등1", "0e", "11", "light", optional_info=light_optional_info)
-거실등2 = wallpad.add_device("거실등2", "0e", "12", "light", optional_info=light_optional_info)
-간접등  = wallpad.add_device("간접등",  "0e", "13", "light", optional_info=light_optional_info)
-주방등  = wallpad.add_device("주방등",  "0e", "14", "light", optional_info=light_optional_info)
-식탁등  = wallpad.add_device("식탁등",  "0e", "15", "light", optional_info=light_optional_info)
-복도등  = wallpad.add_device("복도등",  "0e", "16", "light", optional_info=light_optional_info)
-안방등  = wallpad.add_device("안방등",  "0e", "21", "light", optional_info=light_optional_info)
-대피공간등 = wallpad.add_device("대피공간등", "0e", "22", "light", optional_info=light_optional_info)
+# 개별 조명 엔티티
+거실등1    = wallpad.add_device("거실등1", "0e", "11", "light", optional_info=optional_info)
+거실등2    = wallpad.add_device("거실등2", "0e", "12", "light", optional_info=optional_info)
+간접등     = wallpad.add_device("간접등",  "0e", "13", "light", optional_info=optional_info)
+주방등     = wallpad.add_device("주방등",  "0e", "14", "light", optional_info=optional_info)
+식탁등     = wallpad.add_device("식탁등",  "0e", "15", "light", optional_info=optional_info)
+복도등     = wallpad.add_device("복도등",  "0e", "16", "light", optional_info=optional_info)
+안방등     = wallpad.add_device("안방등",  "0e", "21", "light", optional_info=optional_info)
+대피공간등 = wallpad.add_device("대피공간등", "0e", "22", "light", optional_info=optional_info)
 
-# 그룹 조명 등록 (엔티티로 노출)
+# 그룹 엔티티 (UI에 노출되도록 mqtt_discovery=True)
 거실등전체 = wallpad.add_device(
     device_name="거실등 전체",
     device_id="0e",
     device_subid="1f",
     device_class="light",
+    mqtt_discovery=True,
     child_device=[거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]
 )
 
@@ -365,6 +366,7 @@ light_optional_info = {"optimistic": "false"}
     device_id="0e",
     device_subid="2f",
     device_class="light",
+    mqtt_discovery=True,
     child_device=[안방등, 대피공간등]
 )
 
@@ -372,7 +374,9 @@ light_optional_info = {"optimistic": "false"}
 거실등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
 안방등전체.register_status("01", "availability", "availability_topic", r'()', lambda v: "online")
 
-# 개별 조명 상태 (81 플래그)
+# ----------------------------------------------------------
+# 개별 조명 상태 보고
+# ----------------------------------------------------------
 거실등1.register_status("81", "power", "state_topic", r'00(0[01])0[01]0[01]', lambda v: "ON" if v == "01" else "OFF")
 거실등2.register_status("81", "power", "state_topic", r'000[01](0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
 간접등.register_status("81", "power", "state_topic", r'000[01]0[01](0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
@@ -382,32 +386,29 @@ light_optional_info = {"optimistic": "false"}
 안방등.register_status("81", "power", "state_topic", r'00(0[01])0[01]', lambda v: "ON" if v == "01" else "OFF")
 대피공간등.register_status("81", "power", "state_topic", r'000[01](0[01])', lambda v: "ON" if v == "01" else "OFF")
 
-# 개별 조명 상태 (c1 플래그, 중복 보고 대비)
-for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
-    light.register_status("c1", "power", "state_topic", r'00(0[01])', lambda v: "ON" if v == "01" else "OFF")
+# ----------------------------------------------------------
+# 그룹 상태 보고 (자식 중 하나라도 ON이면 그룹 ON)
+# ----------------------------------------------------------
+def group_state(devices):
+    return "ON" if any(dev.last_value == "ON" for dev in devices) else "OFF"
 
-# 개별 조명 제어 명령
+거실등전체.register_status("81", "power", "state_topic", r'.*',
+    lambda v: group_state([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]))
+안방등전체.register_status("81", "power", "state_topic", r'.*',
+    lambda v: group_state([안방등, 대피공간등]))
+
+# ----------------------------------------------------------
+# 제어 명령
+# ----------------------------------------------------------
+# 개별 조명 제어
 for light in [거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등, 안방등, 대피공간등]:
     light.register_command("41", "power", "command_topic", lambda v: "01" if v == "ON" else "00")
 
-# 그룹 상태 계산 함수 (하나라도 켜져있으면 ON)
-def group_state(devices):
-    return "ON" if any(d.get_status("power") == "ON" for d in devices) else "OFF"
-
-# 그룹 상태 등록
-거실등전체.register_status("81", "power", "state_topic", r'.*', lambda v: group_state([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등]))
-안방등전체.register_status("81", "power", "state_topic", r'.*', lambda v: group_state([안방등, 대피공간등]))
-
-# 그룹 제어 명령 (ON → 모든 자식 켜짐, OFF → 모든 자식 꺼짐)
-def group_command(devices, value):
-    cmd = "01" if value == "ON" else "00"
-    for d in devices:
-        d.send_command("power", cmd)
-    return cmd
-
-거실등전체.register_command("41", "power", "command_topic", lambda v: group_command([거실등1, 거실등2, 간접등, 주방등, 식탁등, 복도등], v))
-안방등전체.register_command("41", "power", "command_topic", lambda v: group_command([안방등, 대피공간등], v))
-
+# 그룹 제어 (OFF → 전체 끄기)
+거실등전체.register_command("41", "power", "command_topic",
+    lambda v: "00" if v == "OFF" else "01")
+안방등전체.register_command("41", "power", "command_topic",
+    lambda v: "00" if v == "OFF" else "01")
 
 # ==========================================================
 # 보일러 (난방)
