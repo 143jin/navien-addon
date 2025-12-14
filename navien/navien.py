@@ -98,7 +98,6 @@ class Wallpad:
 
 
     def __init__(self):
-        print("DEBUG :", , type())
         self._client = mqtt.Client()
         self.mqtt_client.on_message    = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
