@@ -5,10 +5,22 @@ import json
 from json import dumps as json_dumps
 from functools import reduce
 from collections import defaultdict
+import configparser
+
+def load_config():
+    try:
+        with open('/data/options.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print("Failed to load config:", e)
+        raise
+
+config = load_config()
 
 MQTT_SERVER = config["MQTT"]["server"]
 MQTT_USERNAME = config["MQTT"]["username"]
 MQTT_PASSWORD = config["MQTT"]["password"]
+MQTT_PORT   = config["MQTT"]["port"]
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
 
