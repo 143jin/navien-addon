@@ -169,7 +169,7 @@ class Wallpad:
             client.publish(ROOT_TOPIC_NAME + '/dev/command', payload, qos = 2, retain = False)
 
     def on_disconnect(self, client, userdata, rc):
-    print("MQTT disconnected with result code", rc)
+        print("MQTT disconnected with result code", rc)
     # 여기서 바로 raise 하지 말고, 필요하면 재연결 로직 추가
     # self.mqtt_client.reconnect() 같은 방식
         try:
