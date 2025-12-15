@@ -188,7 +188,7 @@ packet_2_payload_modes = {'01': 'bypass', '03': 'heating', '04': 'auto', '05': '
 optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max': 3,'preset_modes': ['bypass', 'heating', 'auto', 'air_clean']
 }
 환풍기 = wallpad.add_device(device_name = '환풍기', device_id = '32', device_subid = '01', device_class = 'fan', optional_info = optional_info)
-환풍기.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic',      regex = r'()', process_func = lambda v: 'online')
+환풍기.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic',      regex = r'(01)', process_func = lambda v: 'online')
 
 환풍기.register_status(message_flag = '81', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])0[0-3]0[013]00', process_func = lambda v: 'ON' if v == '01' else 'OFF')
 환풍기.register_status(message_flag = 'c1', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])0[0-3]0[013]00', process_func = lambda v: 'ON' if v == '01' else 'OFF')
@@ -196,8 +196,8 @@ optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max':
 환풍기.register_status(message_flag = '81', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])0[013]00', process_func = lambda v: packet_2_payload_percentage[v])
 환풍기.register_status(message_flag = 'c2', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])0[013]00', process_func = lambda v: packet_2_payload_percentage[v])
 
-환풍기.register_status(message_flag = '81', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'0[0-5]0[01]0[01]0[01](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
-환풍기.register_status(message_flag = 'c3', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'0[0-5]0[01]0[01]0[01](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
+환풍기.register_status(message_flag = '81', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
+환풍기.register_status(message_flag = 'c3', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
 
 환풍기.register_command(message_flag = '41', attr_name = 'power',       topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
 환풍기.register_command(message_flag = '42', attr_name = 'percentage',  topic_class = 'percentage_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_percentage.items()}[v])
