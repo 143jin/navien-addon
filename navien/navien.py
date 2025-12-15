@@ -324,5 +324,6 @@ for message_flag in ['81', 'C3', 'C4', 'C5', 'C6', 'C7']:
 팬트리난방.register_command(message_flag = '45', attr_name = 'dry', topic_class = 'dry_mode_command_topic', process_func = lambda v: '01' if v =='ON' else '00')
 팬트리난방.register_command(message_flag = '47', attr_name = 'fan_only', topic_class = 'fan_only_mode_command_topic', process_func = lambda v: '01' if v =='ON' else '00')
 
+wallpad.register_mqtt_discovery()
 
 wallpad.listen()
