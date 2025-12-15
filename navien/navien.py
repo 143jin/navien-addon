@@ -36,7 +36,7 @@ class Device:
         self.device_unique_id = 'rs485_' + self.device_id + '_' + self.device_subid
         self.device_class = device_class
         self.child_device = child_device
-        self._discovery = _discovery
+        self.mqtt_discovery = _discovery
         self.optional_info = optional_info
 
         self.__message_flag = {}            # {'power': '41'}
