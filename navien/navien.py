@@ -87,7 +87,7 @@ class Device:
             'identifiers': self.device_unique_id,
             'name': self.device_name
         }
-        return json_dumps(result, ensure_ascii = False)
+        return json.dumps(result, ensure_ascii = False)
 
     def get_status_attr_list(self):
         return list(set([status['attr_name'] for status_list in self.__status_messages_map.values() for status in status_list]))
