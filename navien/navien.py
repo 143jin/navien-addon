@@ -182,7 +182,7 @@ class Wallpad:
 wallpad = Wallpad()
 
 packet_2_payload_percentage = {'00': '0', '01': '1', '02': '2', '03': '3'}
-packet_2_payload_modes = {'01': 'bypass', '03': 'heating', '04': 'auto', '05': 'air_claen'}
+packet_2_payload_modes = {'01': 'bypass', '03': 'heating', '04': 'auto', '05': 'air_clean'}
 
 ### 환풍기 ###
 optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max': 3,'preset_modes': ['bypass', 'heating', 'auto', 'air_clean']
