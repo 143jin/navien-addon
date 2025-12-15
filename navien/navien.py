@@ -69,7 +69,7 @@ class Device:
         command_payload.append(Wallpad.add(command_payload))
         return bytearray.fromhex(' '.join(command_payload))
 
-    def get__discovery_payload(self):
+    def get_mqtt_discovery_payload(self):
         result = {
             '~': '/'.join([ROOT_TOPIC_NAME, self.device_class, self.device_name]),
             'name': self.device_name,
@@ -98,11 +98,11 @@ class Wallpad:
 
 
     def __init__(self):
-        self._client = mqtt.Client()
+        self.mqtt_client = mqtt.Client()
         self.mqtt_client.on_message    = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-        self.mqtt_client.connect(MQTT_SERVER, 1883)
+        self.mqtt_client.connect(MQTT_SERVER, MQTT_PORT)
 
     def listen(self):
         self.register_mqtt_discovery()
