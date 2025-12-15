@@ -56,7 +56,7 @@ class Device:
         result = {}
         device_family = [self] + self.child_device
         for device in device_family:
-            for status in device.__status_messages_map[payload_dict['message_flag']]:
+            for status in device.__status_messages_map.get(payload_dict['message_flag'], []):
                 topic = '/'.join([ROOT_TOPIC_NAME, device.device_class, device.device_name, status['attr_name']])
                 result[topic] = status['process_func'](re.match(status['regex'], payload_dict['data'])[1])
         return result
@@ -93,11 +93,9 @@ class Device:
         return list(set([status['attr_name'] for status_list in self.__status_messages_map.values() for status in status_list]))
 
 class Wallpad:
-    _device_list = []
-    
-
 
     def __init__(self):
+        self._device_list = []
         self.mqtt_client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.mqtt_client.on_message    = self.on_raw_message
         self.mqtt_client.on_disconnect = self.on_disconnect
@@ -160,7 +158,9 @@ class Wallpad:
                     else:
                         continue
                 except Exception as e:
-                    client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos = 1, retain = True)
+                    print("Parse error:", e)
+                    client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos=1, retain=True)
+
 
         else: # homeassistant에서 명령하여 MQTT topic을 publish하는 경우
             topic_split = msg.topic.split('/') # rs485_2mqtt/light/안방등/power/set
@@ -168,14 +168,24 @@ class Wallpad:
             payload = device.get_command_payload_byte(topic_split[3], msg.payload.decode())
             client.publish(ROOT_TOPIC_NAME + '/dev/command', payload, qos = 2, retain = False)
 
-    def on_disconnect(client, userdata, rc, properties=None):
-        print("Disconnected with result code "+str(rc)))
-    # 여기서 바로 raise 하지 말고, 필요하면 재연결 로직 추가
-    # self.mqtt_client.reconnect() 같은 방식
-        try:
-            client.reconnect()
-        except Exception as e:
-            print("Reconnect failed:", e)
+    def on_disconnect(self, client, userdata, rc, properties=None):
+        print("Disconnected with result code", rc)
+
+        retry_delay = 3
+        max_delay = 60
+
+        while True:
+            try:
+                print(f"Reconnect in {retry_delay}s")
+                time.sleep(retry_delay)
+                client.reconnect()
+                print("Reconnected")
+                break
+            except Exception as e:
+                print("Reconnect failed:", e)
+                retry_delay = min(retry_delay * 2, max_delay)
+
+
 
 
 
