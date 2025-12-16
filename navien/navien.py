@@ -206,12 +206,12 @@ optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max':
 환풍기.register_status(message_flag = '81', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])', process_func = lambda v: packet_2_payload_percentage[v])
 환풍기.register_status(message_flag = 'c2', attr_name = 'percentage',   topic_class ='percentage_state_topic',  regex = r'000[01](0[0-3])', process_func = lambda v: packet_2_payload_percentage[v])
 
-환풍기.register_status(message_flag = '81', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
-환풍기.register_status(message_flag = 'c3', attr_name = 'mode',         topic_class ='mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
+환풍기.register_status(message_flag = '81', attr_name = 'mode',         topic_class ='preset_mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
+환풍기.register_status(message_flag = 'c3', attr_name = 'mode',         topic_class ='preset_mode_state_topic', regex = r'000[01]0[013](0[1345])00', process_func = lambda v: packet_2_payload_modes[v])
 
 환풍기.register_command(message_flag = '41', attr_name = 'power',       topic_class = 'command_topic', process_func = lambda v: '01' if v =='ON' else '00')
 환풍기.register_command(message_flag = '42', attr_name = 'percentage',  topic_class = 'percentage_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_percentage.items()}[v])
-환풍기.register_command(message_flag = '43', attr_name = 'mode',        topic_class = 'mode_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_modes.items()}[v])
+환풍기.register_command(message_flag = '43', attr_name = 'mode',        topic_class = 'preset_mode_command_topic', process_func = lambda v: {payload: packet for packet, payload in packet_2_payload_modes.items()}[v])
 
 ### 가스차단기 ###
 optional_info = {'optimistic': 'false'}
