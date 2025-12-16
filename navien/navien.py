@@ -198,7 +198,7 @@ packet_2_payload_modes = {'01': 'bypass', '03': 'heating', '04': 'auto', '05': '
 optional_info = {'optimistic': 'false', 'speed_range_min': 1, 'speed_range_max': 3,'preset_modes': ['bypass', 'heating', 'auto', 'air_clean']
 }
 환풍기 = wallpad.add_device(device_name = '전열교환기', device_id = '32', device_subid = '01', device_class = 'fan', optional_info = optional_info)
-환풍기.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic',      regex = r'(01)', process_func = lambda v: 'online')
+환풍기.register_status(message_flag = '01', attr_name = 'availability', topic_class ='availability_topic',      regex = r'()', process_func = lambda v: 'online')
 
 환풍기.register_status(message_flag = '81', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
 환풍기.register_status(message_flag = 'c1', attr_name = 'power',        topic_class ='state_topic',             regex = r'00(0[01])', process_func = lambda v: 'ON' if v == '01' else 'OFF')
