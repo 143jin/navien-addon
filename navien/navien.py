@@ -370,7 +370,117 @@ optional_info = {
     device_name='거실 난방',
     device_id='36',
     device_subid='11',
-    devi
+    device_class='climate',
+    optional_info=optional_info
+)
+
+안방난방 = wallpad.add_device(
+    device_name='안방 난방',
+    device_id='36',
+    device_subid='12',
+    device_class='climate',
+    optional_info=optional_info
+)
+
+확장난방 = wallpad.add_device(
+    device_name='확장 난방',
+    device_id='36',
+    device_subid='13',
+    device_class='climate',
+    optional_info=optional_info
+)
+
+제인이방난방 = wallpad.add_device(
+    device_name='제인이방 난방',
+    device_id='36',
+    device_subid='14',
+    device_class='climate',
+    optional_info=optional_info
+)
+
+팬트리난방 = wallpad.add_device(
+    device_name='팬트리 난방',
+    device_id='36',
+    device_subid='15',
+    device_class='climate',
+    optional_info=optional_info
+)
+
+난방전체 = wallpad.add_device(
+    device_name='난방 전체',
+    device_id='36',
+    device_subid='1f',
+    device_class='climate',
+    mqtt_discovery=False,
+    child_device=[
+        거실난방,
+        안방난방,
+        확장난방,
+        제인이방난방,
+        팬트리난방
+    ],
+    optional_info=optional_info
+)
+
+
+############################
+# 커맨드 토픽 (43 / 45 / 47 / 44)
+############################
+
+# ── 난방 ON / OFF (43)
+def cmd_heating(v):
+    return '01' if v == 'heat' else '00'
+
+난방전체.register_command(
+    message_flag='43',
+    attr_name='hvac_mode',
+    topic_class='mode_command_topic',
+    process_func=cmd_heating
+)
+
+
+# ── 외출 모드 (45)
+def cmd_away(v):
+    return '01' if v == 'away' else '00'
+
+난방전체.register_command(
+    message_flag='45',
+    attr_name='preset_mode',
+    topic_class='preset_mode_command_topic',
+    process_func=cmd_away
+)
+
+
+# ── 온수 모드 (47)
+def cmd_hotwater(v):
+    return '01' if v == 'hotwater' else '00'
+
+난방전체.register_command(
+    message_flag='47',
+    attr_name='preset_mode',
+    topic_class='preset_mode_command_topic',
+    process_func=cmd_hotwater
+)
+
+
+# ── 목표 온도 설정 (44)
+def cmd_target_temp(v):
+    return int_to_hex(v)
+
+for dev in [
+    거실난방,
+    안방난방,
+    확장난방,
+    제인이방난방,
+    팬트리난방
+]:
+    dev.register_command(
+        message_flag='44',
+        attr_name='temperature',
+        topic_class='temperature_command_topic',
+        process_func=cmd_target_temp
+    )
+
 
 wallpad.register_mqtt_discovery()
 
