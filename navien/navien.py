@@ -199,13 +199,6 @@ class Wallpad:
         else:
             return None, None
 
-거실난방.register_preset_command(
-    attr_name='preset_mode',
-    topic_class='preset_mode_command_topic',
-    process_func=preset_to_packet
-)
-
-
 
 wallpad = Wallpad()
 
