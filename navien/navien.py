@@ -7,6 +7,7 @@ import paho.mqtt.client as mqtt
 
 print("### NAVIEN START ###")
 print("FILE:", __file__)
+REGEX_RAW_PACKET = (r'f7' r'(?P<device_id>0e|12|32|33|36)' r'(?P<device_subid>[0-9a-f]{2})' r'(?P<message_flag>[0-9a-f]{2})' r'[0-9a-f]{2}' r'(?P<data>[0-9a-f]+?)' r'(?P<xor>[0-9a-f]{2})' r'(?P<add>[0-9a-f]{2})')
 
 def load_config():
     try:
@@ -26,7 +27,6 @@ MQTT_USERNAME = broker.get("username")
 MQTT_PASSWORD = broker.get("password")
 ROOT_TOPIC_NAME = 'rs485_2mqtt'
 HOMEASSISTANT_ROOT_TOPIC_NAME = 'homeassistant'
-REGEX_RAW_PACKET = (r'f7' r'(?P<device_id>0e|12|32|33|36)' r'(?P<device_subid>[0-9a-f]{2})' r'(?P<message_flag>[0-9a-f]{2})' r'[0-9a-f]{2}' r'(?P<data>[0-9a-f]+?)' r'(?P<xor>[0-9a-f]{2})' r'(?P<add>[0-9a-f]{2})')
 
 
 class Device:
