@@ -146,19 +146,20 @@ class Wallpad:
             
 REGEX_RAW_PACKET = (r'f7' r'(?P<device_id>0e|12|32|33|36)' r'(?P<device_subid>[0-9a-f]{2})' r'(?P<message_flag>[0-9a-f]{2})' r'[0-9a-f]{2}' r'(?P<data>[0-9a-f]+?)' r'(?P<xor>[0-9a-f]{2})' r'(?P<add>[0-9a-f]{2})')
 
-    def on_raw_message(self, client, userdata, msg):
+def on_raw_message(self, client, userdata, msg):
 
-        if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':
-            for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:
-                payload_hexstring = 'f7' + payload_raw_bytes.hex()
+    if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':
 
-                try:
-                    if not self.is_valid(payload_hexstring):
-                        continue
+        for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:
+            payload_hexstring = 'f7' + payload_raw_bytes.hex()
 
-                    m = re.match(REGEX, payload_hexstring)
-                    if not m:
-                        raise ValueError("regex mismatch")
+            try:
+                if not self.is_valid(payload_hexstring):
+                    continue
+
+                m = re.match(REGEX, payload_hexstring)
+                if not m:
+                    raise ValueError("regex mismatch")
 
                 payload_dict = m.groupdict()
 
@@ -167,8 +168,9 @@ REGEX_RAW_PACKET = (r'f7' r'(?P<device_id>0e|12|32|33|36)' r'(?P<device_subid>[0
                     device_subid=payload_dict['device_subid']
                 )
 
-            for topic, value in device.parse_payload(payload_dict).items():
-                      client.publish(topic, value, qos=1, retain=False)
+                parsed = device.parse_payload(payload_dict)
+                for topic, value in parsed.items():
+                    client.publish(topic, value, qos=1, retain=False)
 
             except Exception as e:
                 print("Parse error:", e)
