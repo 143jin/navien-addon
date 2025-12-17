@@ -290,11 +290,11 @@ def get_power_state(v, idx, preset_bits):
     return 'heat' if bit == '1' else 'off'
     
 for message_flag in ['81', 'C5', 'C7']:
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0})
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0})
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0})
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0})
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0})
+    거실난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0}
+    안방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0}
+    확장난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0}
+    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0}
+    팬트리난방.register_status(message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: get_power_state(v, 4, {'away': 0, 'hotwater': 0}
 
     거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'away' if format(int(v, 16), '05b')[4] == '1' else None
     안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'away' if format(int(v, 16), '05b')[3] == '1' else None
