@@ -146,56 +146,56 @@ class Wallpad:
             
 REGEX_RAW_PACKET = (r'f7' r'(?P<device_id>0e|12|32|33|36)' r'(?P<device_subid>[0-9a-f]{2})' r'(?P<message_flag>[0-9a-f]{2})' r'[0-9a-f]{2}' r'(?P<data>[0-9a-f]+?)' r'(?P<xor>[0-9a-f]{2})' r'(?P<add>[0-9a-f]{2})')
 
-def on_raw_message(self, client, userdata, msg):
+    def on_raw_message(self, client, userdata, msg):
 
-    if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':
+        if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':
 
-        for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:
-            payload_hexstring = 'f7' + payload_raw_bytes.hex()
+            for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:
+                payload_hexstring = 'f7' + payload_raw_bytes.hex()
 
-            try:
-                if not self.is_valid(payload_hexstring):
-                    continue
+                try:
+                    if not self.is_valid(payload_hexstring):
+                        continue
 
-                m = re.match(REGEX, payload_hexstring)
-                if not m:
-                    raise ValueError("regex mismatch")
+                    m = re.match(REGEX, payload_hexstring)
+                    if not m:
+                        raise ValueError("regex mismatch")
 
-                payload_dict = m.groupdict()
+                    payload_dict = m.groupdict()
 
-                device = self.get_device(
-                    device_id=payload_dict['device_id'],
-                    device_subid=payload_dict['device_subid']
-                )
+                    device = self.get_device(
+                        device_id=payload_dict['device_id'],
+                        device_subid=payload_dict['device_subid']
+                    )
 
-                parsed = device.parse_payload(payload_dict)
-                for topic, value in parsed.items():
-                    client.publish(topic, value, qos=1, retain=False)
+                    parsed = device.parse_payload(payload_dict)
+                    for topic, value in parsed.items():
+                        client.publish(topic, value, qos=1, retain=False)
 
-            except Exception as e:
-                print("Parse error:", e)
-                client.publish(
-                    ROOT_TOPIC_NAME + '/dev/error',
-                    payload_hexstring,
-                    qos=1,
-                    retain=True
-                )
+                except Exception as e:
+                    print("Parse error:", e)
+                    client.publish(
+                        ROOT_TOPIC_NAME + '/dev/error',
+                        payload_hexstring,
+                        qos=1,
+                        retain=True
+                    )
 
-    else:
-        topic_split = msg.topic.split('/')
-        device = self.get_device(device_name=topic_split[2])
+        else:
+            topic_split = msg.topic.split('/')
+            device = self.get_device(device_name=topic_split[2])
 
-        payload = device.get_command_payload_byte(
-            topic_split[3],
-            msg.payload.decode()
-        )
+            payload = device.get_command_payload_byte(
+                topic_split[3],
+                msg.payload.decode()
+            )
 
-        client.publish(
-            ROOT_TOPIC_NAME + '/dev/command',
-            payload,
-            qos=2,
-            retain=False
-        )
+            client.publish(
+                ROOT_TOPIC_NAME + '/dev/command',
+                payload,
+                qos=2,
+                retain=False
+            )
 
         
     def on_disconnect(self, client, userdata, rc, properties=None):
