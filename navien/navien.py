@@ -278,7 +278,7 @@ optional_info = {'modes': ['off', 'heat'], 'preset_modes': [ 'away', 'hotwater']
 난방전체 =  wallpad.add_device(device_name = '난방 전체',   device_id = '36', device_subid = '1f', device_class = 'climate', mqtt_discovery = False, child_device = [거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방])
 
 난방전체.register_status(message_flag = '01', attr_name = 'availability', regex = r'()', topic_class ='availability_topic', process_func = lambda v: 'online')
-def get_power_state(v, idx, preset_bits):
+def get_power_state(value_hex, idx, preset_bits):
     # 먼저 프리셋 모드 확인
     if preset_bits.get('hotwater', 0) == 1:
         return 'hotwater'
