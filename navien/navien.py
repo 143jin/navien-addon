@@ -146,27 +146,47 @@ class Wallpad:
             return False
 
     def on_raw_message(self, client, userdata, msg):
-        if msg.topic == ROOT_TOPIC_NAME + '/dev/raw': # ew11이 MQTT에 rs485 패킷을 publish하는 경우
-            for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]: # payload 내에 여러 메시지가 있는 경우, \f7 disappear as delimiter here
-                payload_hexstring = 'f7' + payload_raw_bytes.hex() # 'f7361f810f000001000017179817981717969896de22'
+        if msg.topic == ROOT_TOPIC_NAME + '/dev/raw':  # ew11이 MQTT에 rs485 패킷을 publish하는 경우
+            for payload_raw_bytes in msg.payload.split(b'\xf7')[1:]:  # payload 내에 여러 메시지가 있는 경우
+                payload_hexstring = 'f7' + payload_raw_bytes.hex()  # 예: 'f7361f810f000001000017179817981717969896de22'
                 try:
                     if self.is_valid(payload_hexstring):
-                        payload_dict = re.match(r'f7(?P<device_id>0e|12|32|33|36)(?P<device_subid>[0-9a-f]{2})(?P<message_flag>[0-9a-f]{2})(?:[0-9a-f]{2})(?P<data>[0-9a-f]*)(?P<xor>[0-9a-f]{2})(?P<add>[0-9a-f]{2})', payload_hexstring).groupdict()
+                        # 정규식 매칭 시도
+                        m = re.match(
+                            r'f7(?P<device_id>0e|12|32|33|36)'
+                            r'(?P<device_subid>[0-9a-f]{2})'
+                            r'(?P<message_flag>[0-9a-f]{2})'
+                            r'(?:[0-9a-f]{2})'
+                            r'(?P<data>[0-9a-f]*)'
+                            r'(?P<xor>[0-9a-f]{2})'
+                            r'(?P<add>[0-9a-f]{2})',
+                            payload_hexstring
+                        )
+                        if not m:
+                            print("Regex no match:", payload_hexstring)
+                            client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos=1, retain=True)
+                            continue
 
-                        for topic, value in self.get_device(device_id = payload_dict['device_id'], device_subid = payload_dict['device_subid']).parse_payload(payload_dict).items():
-                            client.publish(topic, value, qos = 1, retain = False)
+                        payload_dict = m.groupdict()
+
+                        # 파싱된 payload_dict를 해당 디바이스에 전달
+                        device = self.get_device(
+                            device_id=payload_dict['device_id'],
+                            device_subid=payload_dict['device_subid']
+                        )
+                        for topic, value in device.parse_payload(payload_dict).items():
+                            client.publish(topic, value, qos=1, retain=False)
                     else:
                         continue
                 except Exception as e:
                     print("Parse error:", e)
                     client.publish(ROOT_TOPIC_NAME + '/dev/error', payload_hexstring, qos=1, retain=True)
 
-
-        else: # homeassistant에서 명령하여 MQTT topic을 publish하는 경우
-            topic_split = msg.topic.split('/') # rs485_2mqtt/light/안방등/power/set
-            device = self.get_device(device_name = topic_split[2])
+        else:  # homeassistant에서 명령하여 MQTT topic을 publish하는 경우
+            topic_split = msg.topic.split('/')  # 예: rs485_2mqtt/light/안방등/power/set
+            device = self.get_device(device_name=topic_split[2])
             payload = device.get_command_payload_byte(topic_split[3], msg.payload.decode())
-            client.publish(ROOT_TOPIC_NAME + '/dev/command', payload, qos = 2, retain = False)
+            client.publish(ROOT_TOPIC_NAME + '/dev/command', payload, qos=2, retain=False)
 
     def on_disconnect(self, client, userdata, rc, properties=None):
         print("Disconnected with result code", rc)
