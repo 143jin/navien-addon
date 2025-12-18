@@ -153,7 +153,7 @@ class Wallpad:
                     if self.is_valid(payload_hexstring):
                         # 정규식 매칭 시도
                         m = re.match(
-                            r'f7(?P<device_id>0e|12|32|33|36|39)'
+                            r'f7(?P<device_id>0e|12|31|32|33|36|39)'
                             r'(?P<device_subid>[0-9a-f]{2})'
                             r'(?P<message_flag>[0-9a-f]{2})'
                             r'(?:[0-9a-f]{2})'
