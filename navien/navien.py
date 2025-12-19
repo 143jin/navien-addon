@@ -268,7 +268,7 @@ optional_info = {'optimistic': 'false'}
 
 
 ### 난방 ###
-optional_info = {'modes': ['off', 'heat'], 'preset_modes': ['away','hotwater'], 'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'}
+optional_info = {'modes': ['off'], 'preset_modes': ['heat','away','hotwater'], 'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'}
 
 거실난방 =  wallpad.add_device(device_name = '거실 난방',   device_id = '36', device_subid = '11', device_class = 'climate', optional_info = optional_info)
 안방난방 =  wallpad.add_device(device_name = '안방 난방',   device_id = '36', device_subid = '12', device_class = 'climate', optional_info = optional_info)
@@ -280,11 +280,17 @@ optional_info = {'modes': ['off', 'heat'], 'preset_modes': ['away','hotwater'], 
 난방전체.register_status(message_flag = '01', attr_name = 'availability', regex = r'()', topic_class ='availability_topic', process_func = lambda v: 'online')
 
 for message_flag in ['81', 'C3', 'C4', 'C5', 'C6', 'C7']:
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if (format(int(v[0], 16), '05b')[4] == '1' or format(int(v[1], 16), '05b')[4] == '1' or format(int(v[2], 16), '05b')[4] == '1')else 'off')
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if (format(int(v[0], 16), '05b')[3] == '1' or format(int(v[1], 16), '05b')[3] == '1' or format(int(v[2], 16), '05b')[3] == '1')else 'off')
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if (format(int(v[0], 16), '05b')[2] == '1' or format(int(v[1], 16), '05b')[2] == '1' or format(int(v[2], 16), '05b')[2] == '1')else 'off')
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if (format(int(v[0], 16), '05b')[1] == '1' or format(int(v[1], 16), '05b')[1] == '1' or format(int(v[2], 16), '05b')[1] == '1')else 'off')
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if (format(int(v[0], 16), '05b')[0] == '1' or format(int(v[1], 16), '05b')[0] == '1' or format(int(v[2], 16), '05b')[0] == '1')else 'off')
+    거실난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'on' if (format(int(v[0], 16), '05b')[4] == '1' or format(int(v[1], 16), '05b')[4] == '1' or format(int(v[2], 16), '05b')[4] == '1')else 'off')
+    안방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'on' if (format(int(v[0], 16), '05b')[3] == '1' or format(int(v[1], 16), '05b')[3] == '1' or format(int(v[2], 16), '05b')[3] == '1')else 'off')
+    확장난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'on' if (format(int(v[0], 16), '05b')[2] == '1' or format(int(v[1], 16), '05b')[2] == '1' or format(int(v[2], 16), '05b')[2] == '1')else 'off')
+    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'on' if (format(int(v[0], 16), '05b')[1] == '1' or format(int(v[1], 16), '05b')[1] == '1' or format(int(v[2], 16), '05b')[1] == '1')else 'off')
+    팬트리난방.register_status(message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})([\da-fA-F]{2})[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'on' if (format(int(v[0], 16), '05b')[0] == '1' or format(int(v[1], 16), '05b')[0] == '1' or format(int(v[2], 16), '05b')[0] == '1')else 'off')
+    
+    거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[4] == '1' else None)
+    안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[3] == '1' else None)
+    확장난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[2] == '1' else None)
+    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00{2}([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[1] == '1' else None)
+    팬트리난방.register_status(message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[0] == '1' else None)
 
     거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'away' if format(int(v, 16), '05b')[4] == '1' else None)
     안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: 'away' if format(int(v, 16), '05b')[3] == '1' else None)
