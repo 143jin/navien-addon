@@ -268,18 +268,14 @@ optional_info = {'optimistic': 'false'}
 
 
 # --- 설정값 ---
-optional_info = {'modes': ['off', 'heat'], 'preset_modes': ['외출', '온수', '예약'], 'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'}
+# modes에 heat가 있어야 전원이 켜졌을 때 '난방'으로 표시됩니다.
+optional_info = {
+    'modes': ['off', 'heat'], 
+    'preset_modes': ['heat', '외출', '온수', '예약'], 
+    'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'
+}
 
-# 방 설정 리스트 (이름, subid, 비트위치, 타겟온도_offset, 현재온도_offset)
-rooms = [
-    ('거실 난방', '11', 4, 8, 10),
-    ('안방 난방', '12', 3, 12, 14),
-    ('확장 난방', '13', 2, 16, 18),
-    ('제인이방 난방', '14', 1, 20, 22),
-    ('팬트리 난방', '15', 0, 24, 26)
-]
-
-heating_devices = []
+# ... (rooms 리스트는 동일) ...
 
 for name, subid, bit_pos, t_off, c_off in rooms:
     device = wallpad.add_device(device_name=name, device_id='36', device_subid=subid, device_class='climate', optional_info=optional_info)
@@ -287,45 +283,43 @@ for name, subid, bit_pos, t_off, c_off in rooms:
 
     for msg_flag in ['81', 'C3', 'C5', 'C7']:
         # --- 1. 전원 상태 (Power) ---
-        # 00 뒤의 8자리가 '00000000'이면 off, 아니면 일단 켜진 상태(heat)로 표시
-        # (Home Assistant Climate 엔티티는 'heat' 상태일 때 프리셋 선택이 활발해집니다)
+        # 8자리 값을 가져와서 모두 0이면 off, 아니면 heat(전원 켬)
         device.register_status(
-            message_flag=msg_flag, 
-            attr_name='power', 
-            topic_class='mode_state_topic', 
-            regex=r'00([\da-fA-F]{8}).*', 
+            message_flag=msg_flag, attr_name='power', topic_class='mode_state_topic', 
+            regex=r'00([0-9a-fA-F]{8}).*', 
             process_func=lambda v: 'off' if v == '00000000' else 'heat'
         )
     
         # --- 2. 프리셋 모드 (상태 결정) ---
-        # 각 방의 비트 위치(bit_pos)를 참조하여 현재 어떤 프리셋 상태인지 UI에 표시합니다.
-    
-        # 외출 상태 파싱
+        # 중요: 비트가 1일 때만 해당 모드 이름을 반환하고, 아니면 None을 반환하여 
+        # 불필요한 상태 덮어쓰기를 방지합니다. (브릿지 라이브러리 특성에 따라 조절)
+        
+        # 난방(heat) 비트
         device.register_status(
-            message_flag=msg_flag, 
-            attr_name='preset_mode', 
-            topic_class='preset_mode_state_topic', 
+            message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
+            regex=r'00([\da-fA-F]{2}).*', 
+            process_func=lambda v, p=bit_pos: 'heat' if format(int(v, 16), '05b')[p] == '1' else None
+        )    
+        # 외출 비트
+        device.register_status(
+            message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
             regex=r'00[\da-fA-F]{2}([\da-fA-F]{2}).*', 
-            process_func=lambda v, p=bit_pos: '외출' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+            process_func=lambda v, p=bit_pos: '외출' if format(int(v, 16), '05b')[p] == '1' else None
         )
-    
-        # 예약 상태 파싱
+        # 예약 비트
         device.register_status(
-            message_flag=msg_flag, 
-            attr_name='preset_mode', 
-            topic_class='preset_mode_state_topic', 
+            message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
             regex=r'00[\da-fA-F]{4}([\da-fA-F]{2}).*', 
-            process_func=lambda v, p=bit_pos: '예약' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+            process_func=lambda v, p=bit_pos: '예약' if format(int(v, 16), '05b')[p] == '1' else None
         )
-    
-        # 온수 상태 파싱
+        # 온수 비트
         device.register_status(
-            message_flag=msg_flag, 
-            attr_name='preset_mode', 
-            topic_class='preset_mode_state_topic', 
+            message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
             regex=r'00[\da-fA-F]{6}([\da-fA-F]{2}).*', 
-            process_func=lambda v, p=bit_pos: '온수' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+            process_func=lambda v, p=bit_pos: '온수' if format(int(v, 16), '05b')[p] == '1' else None
         )
+
+
 
         # --- 3. 온도 정보 ---
         # f-string 대신 수동으로 regex를 작성하는 것이 가장 안전하지만, 
