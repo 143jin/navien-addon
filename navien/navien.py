@@ -319,6 +319,7 @@ for name, subid, bit_pos, t_off, c_off in rooms:
     # 제어 명령
     device.register_command(message_flag='43', attr_name='power', topic_class='mode_command_topic', process_func=lambda v: '01' if v == 'heat' else '00')
     device.register_command(message_flag='45', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='외출' else '00')
+    device.register_command(message_flag='46', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='예약' else '00')
     device.register_command(message_flag='47', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='온수' else '00')
     device.register_command(message_flag='44', attr_name='targettemp', topic_class='temperature_command_topic', process_func=lambda v: format(int(float(v) // 1 + float(v) % 1 * 256), '02x'))
 
