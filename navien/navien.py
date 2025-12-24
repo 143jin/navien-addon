@@ -267,82 +267,86 @@ optional_info = {'optimistic': 'false'}
 
 
 
-### 난방 ###
-optional_info = {'modes': ['off', 'heat'], 'preset_modes': ['외출', '온수', '예약'], 'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'}
+# --- 설정값 및 장치 리스트 정의 ---
+optional_info = {
+    'modes': ['off', 'heat'], 
+    'preset_modes': ['외출', '온수', '예약'], 
+    'temp_step': 1.0, 'precision': 1.0, 
+    'min_temp': 5.0, 'max_temp': 45.0, 
+    'send_if_off': 'false'
+}
 
-거실난방 =  wallpad.add_device(device_name = '거실 난방',   device_id = '36', device_subid = '11', device_class = 'climate', optional_info = optional_info)
-안방난방 =  wallpad.add_device(device_name = '안방 난방',   device_id = '36', device_subid = '12', device_class = 'climate', optional_info = optional_info)
-확장난방 =  wallpad.add_device(device_name = '확장 난방',   device_id = '36', device_subid = '13', device_class = 'climate', optional_info = optional_info)
-제인이방난방 =  wallpad.add_device(device_name = '제인이방 난방',   device_id = '36', device_subid = '14', device_class = 'climate', optional_info = optional_info)
-팬트리난방= wallpad.add_device(device_name = '팬트리 난방', device_id = '36', device_subid = '15', device_class = 'climate', optional_info = optional_info)
-난방전체 =  wallpad.add_device(device_name = '난방 전체',   device_id = '36', device_subid = '1f', device_class = 'climate', mqtt_discovery = False, child_device = [거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방])
+# (이름, subid, 전원/외출/예약/온수 비트위치, 타겟온도/현재온도 오프셋)
+rooms_config = [
+    ('거실 난방', '11', 4, 8, 10),
+    ('안방 난방', '12', 3, 12, 14),
+    ('확장 난방', '13', 2, 16, 18),
+    ('제인이방 난방', '14', 1, 20, 22),
+    ('팬트리 난방', '15', 0, 24, 26)
+]
 
-난방전체.register_status(message_flag = '01', attr_name = 'availability', regex = r'()', topic_class ='availability_topic', process_func = lambda v: 'online')
+heating_devices = []
 
-for message_flag in ['81','C3','C5','C7']:
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[4] == '1' else 'off')
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[3] == '1' else 'off')
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[2] == '1' else 'off')
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[1] == '1' else 'off')
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'power', topic_class = 'mode_state_topic', regex = r'00([\da-fA-F]{2})', process_func = lambda v: 'heat' if format(int(v, 16), '05b')[0] == '1' else 'off')
+# --- 장치 등록 및 상태 로직 자동화 ---
+for name, subid, bit_pos, target_off, current_off in rooms_config:
+    device = wallpad.add_device(
+        device_name=name, 
+        device_id='36', 
+        device_subid=subid, 
+        device_class='climate', 
+        optional_info=optional_info
+    )
+    heating_devices.append(device)
 
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: '외출' if format(int(v, 16), '05b')[4] == '1' else 'heat')
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: '외출' if format(int(v, 16), '05b')[3] == '1' else 'heat')
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: '외출' if format(int(v, 16), '05b')[2] == '1' else 'heat')
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: '외출' if format(int(v, 16), '05b')[1] == '1' else 'heat')
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{2}([\da-fA-F]{2})', process_func = lambda v: '외출' if format(int(v, 16), '05b')[0] == '1' else 'heat')
+    # 상태 업데이트 등록 (81, C3, C5, C7 패킷 대응)
+    for msg_flag in ['81', 'C3', 'C5', 'C7']:
+        # 1. 전원 상태 (heat / off)
+        device.register_status(
+            message_flag=msg_flag, attr_name='power', topic_class='mode_state_topic',
+            regex=r'00([\da-fA-F]{2})',
+            process_func=lambda v, p=bit_pos: 'heat' if format(int(v, 16), '05b')[p] == '1' else 'off'
+        )
+        
+        # 2. Preset 모드 통합 (외출/예약/온수)
+        # 우선순위에 따라 하나의 상태만 반환하도록 통합 처리 가능 (필요시)
+        device.register_status(
+            message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic',
+            regex=r'00([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})',
+            process_func=lambda v1, v2, v3, v4, p=bit_pos: 
+                '외출' if format(int(v2, 16), '05b')[p] == '1' else 
+                '예약' if format(int(v3, 16), '05b')[p] == '1' else 
+                '온수' if format(int(v4, 16), '05b')[p] == '1' else 'none'
+        )
 
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{4}([\da-fA-F]{2})', process_func = lambda v: '예약' if format(int(v, 16), '05b')[4] == '1' else 'heat')
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{4}([\da-fA-F]{2})', process_func = lambda v: '예약' if format(int(v, 16), '05b')[3] == '1' else 'heat')
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{4}([\da-fA-F]{2})', process_func = lambda v: '예약' if format(int(v, 16), '05b')[2] == '1' else 'heat')
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{4}([\da-fA-F]{2})', process_func = lambda v: '예약' if format(int(v, 16), '05b')[1] == '1' else 'heat')
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{4}([\da-fA-F]{2})', process_func = lambda v: '예약' if format(int(v, 16), '05b')[0] == '1' else 'heat')
+        # 3. 온도 설정 (타겟/현재)
+        device.register_status(
+            message_flag=msg_flag, attr_name='targettemp', topic_class='temperature_state_topic',
+            regex=f'00[\\da-fA-F]{{{target_off}}}([\\da-fA-F]{{2}})',
+            process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5
+        )
+        device.register_status(
+            message_flag=msg_flag, attr_name='currenttemp', topic_class='current_temperature_topic',
+            regex=f'00[\\da-fA-F]{{{current_off}}}([\\da-fA-F]{{2}})',
+            process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5
+        )
 
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{6}([\da-fA-F]{2})', process_func = lambda v: '온수' if format(int(v, 16), '05b')[4] == '1' else 'heat')
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{6}([\da-fA-F]{2})', process_func = lambda v: '온수' if format(int(v, 16), '05b')[3] == '1' else 'heat')
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{6}([\da-fA-F]{2})', process_func = lambda v: '온수' if format(int(v, 16), '05b')[2] == '1' else 'heat')
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{6}([\da-fA-F]{2})', process_func = lambda v: '온수' if format(int(v, 16), '05b')[1] == '1' else 'heat')
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'preset_mode', topic_class = 'preset_mode_state_topic', regex = r'00[\da-fA-F]{6}([\da-fA-F]{2})', process_func = lambda v: '온수' if format(int(v, 16), '05b')[0] == '1' else 'heat')
+    # --- 제어 명령 등록 ---
+    commands = [
+        ('power', '43', 'mode_command_topic', lambda v: '01' if v == 'heat' else '00'),
+        ('preset_mode', '45', 'preset_mode_command_topic', lambda v: '01' if v == '외출' else '00'),
+        ('preset_mode', '47', 'preset_mode_command_topic', lambda v: '01' if v == '온수' else '00'),
+        ('targettemp', '44', 'temperature_command_topic', lambda v: format(int(float(v) // 1 + float(v) % 1 * 256), '02x'))
+    ]
+    for attr, flag, topic, func in commands:
+        device.register_command(message_flag=flag, attr_name=attr, topic_class=topic, process_func=func)
 
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'targettemp',  topic_class ='temperature_state_topic',   regex = r'00[\da-fA-F]{8}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'targettemp',  topic_class ='temperature_state_topic',   regex = r'00[\da-fA-F]{12}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'targettemp',  topic_class ='temperature_state_topic',   regex = r'00[\da-fA-F]{16}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'targettemp',  topic_class ='temperature_state_topic',  regex = r'00[\da-fA-F]{20}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'targettemp',  topic_class ='temperature_state_topic',  regex = r'00[\da-fA-F]{24}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-
-    거실난방.register_status(  message_flag = message_flag, attr_name = 'currenttemp', topic_class ='current_temperature_topic', regex = r'00[\da-fA-F]{10}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    안방난방.register_status(  message_flag = message_flag, attr_name = 'currenttemp', topic_class ='current_temperature_topic', regex = r'00[\da-fA-F]{14}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    확장난방.register_status(  message_flag = message_flag, attr_name = 'currenttemp', topic_class ='current_temperature_topic', regex = r'00[\da-fA-F]{18}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    제인이방난방.register_status(  message_flag = message_flag, attr_name = 'currenttemp', topic_class ='current_temperature_topic', regex = r'00[\da-fA-F]{22}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-    팬트리난방.register_status(message_flag = message_flag, attr_name = 'currenttemp', topic_class ='current_temperature_topic', regex = r'00[\da-fA-F]{26}([\da-fA-F]{2})', process_func = lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-
-
-난방전체.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00')
-
-거실난방.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00')
-거실난방.register_command(message_flag = '45', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='외출' else '00')
-거실난방.register_command(message_flag = '47', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='온수' else '00')
-거실난방.register_command(message_flag = '44', attr_name = 'targettemp', topic_class = 'temperature_command_topic', process_func = lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x'))
-
-안방난방.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00')
-안방난방.register_command(message_flag = '45', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='외출' else '00')
-안방난방.register_command(message_flag = '47', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='온수' else '00')
-안방난방.register_command(message_flag = '44', attr_name = 'targettemp', topic_class = 'temperature_command_topic', process_func = lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x'))
-
-확장난방.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00')
-확장난방.register_command(message_flag = '45', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='외출' else '00')
-확장난방.register_command(message_flag = '47', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='온수' else '00')
-확장난방.register_command(message_flag = '44', attr_name = 'targettemp', topic_class = 'temperature_command_topic', process_func = lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x'))
-
-제인이방난방.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00') # { 'ON': '01', 'OFF': '00' }
-제인이방난방.register_command(message_flag = '45', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='외출' else '00')
-제인이방난방.register_command(message_flag = '47', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='온수' else '00')
-제인이방난방.register_command(message_flag = '44', attr_name = 'targettemp', topic_class = 'temperature_command_topic', process_func = lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x'))
-
-팬트리난방.register_command(message_flag = '43', attr_name = 'power', topic_class = 'mode_command_topic', process_func = lambda v: '01' if v == 'heat' else '00') # , { 'ON': '01', 'OFF': '00' }
-팬트리난방.register_command(message_flag = '45', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='외출' else '00')
-팬트리난방.register_command(message_flag = '47', attr_name = 'preset_mode', topic_class = 'preset_mode_command_topic', process_func = lambda v: '01' if v =='온수' else '00')
-팬트리난방.register_command(message_flag = '44', attr_name = 'targettemp', topic_class = 'temperature_command_topic', process_func = lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x'))
+# --- 전체 제어 장치 ---
+난방전체 = wallpad.add_device(
+    device_name='난방 전체', device_id='36', device_subid='1f', 
+    device_class='climate', mqtt_discovery=False, child_device=heating_devices
+)
+난방전체.register_status(message_flag='01', attr_name='availability', regex=r'()', topic_class='availability_topic', process_func=lambda v: 'online')
+난방전체.register_command(message_flag='43', attr_name='power', topic_class='mode_command_topic', process_func=lambda v: '01' if v == 'heat' else '00')
 
 
 
