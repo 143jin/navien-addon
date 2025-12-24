@@ -286,42 +286,72 @@ for name, subid, bit_pos, t_off, c_off in rooms:
     heating_devices.append(device)
 
     for msg_flag in ['81', 'C3', 'C5', 'C7']:
-        # 전원 (mode_state)
-        device.register_status(message_flag=msg_flag, attr_name='power', topic_class='mode_state_topic', 
-                               regex=r'00([\da-fA-F]{2}).*', 
-                               process_func=lambda v, p=bit_pos: 'heat' if format(int(v, 16), '05b')[p] == '1' else 'off')
-        
-        # 외출 (preset)
-        device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{2}([\da-fA-F]{2}).*', 
-                               process_func=lambda v, p=bit_pos: '외출' if format(int(v, 16), '05b')[p] == '1' else 'heat')
-        
-        # 예약 (preset)
-        device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{4}([\da-fA-F]{2}).*', 
-                               process_func=lambda v, p=bit_pos: '예약' if format(int(v, 16), '05b')[p] == '1' else 'heat')
-        
-        # 온수 (preset)
-        device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{6}([\da-fA-F]{2}).*', 
-                               process_func=lambda v, p=bit_pos: '온수' if format(int(v, 16), '05b')[p] == '1' else 'heat')
+        # --- 1. 전원 상태 (Power) ---
+        # 00 뒤의 8자리가 '00000000'이면 off, 아니면 일단 켜진 상태(heat)로 표시
+        # (Home Assistant Climate 엔티티는 'heat' 상태일 때 프리셋 선택이 활발해집니다)
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='power', 
+            topic_class='mode_state_topic', 
+            regex=r'00([\da-fA-F]{8}).*', 
+            process_func=lambda v: 'off' if v == '00000000' else 'heat'
+        )
+    
+        # --- 2. 프리셋 모드 (상태 결정) ---
+        # 각 방의 비트 위치(bit_pos)를 참조하여 현재 어떤 프리셋 상태인지 UI에 표시합니다.
+    
+        # 외출 상태 파싱
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='preset_mode', 
+            topic_class='preset_mode_state_topic', 
+            regex=r'00[\da-fA-F]{2}([\da-fA-F]{2}).*', 
+            process_func=lambda v, p=bit_pos: '외출' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+        )
+    
+        # 예약 상태 파싱
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='preset_mode', 
+            topic_class='preset_mode_state_topic', 
+            regex=r'00[\da-fA-F]{4}([\da-fA-F]{2}).*', 
+            process_func=lambda v, p=bit_pos: '예약' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+        )
+    
+        # 온수 상태 파싱
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='preset_mode', 
+            topic_class='preset_mode_state_topic', 
+            regex=r'00[\da-fA-F]{6}([\da-fA-F]{2}).*', 
+            process_func=lambda v, p=bit_pos: '온수' if format(int(v, 16), '05b')[p] == '1' else 'heat'
+        )
 
-        # 타겟 온도
-        device.register_status(message_flag=msg_flag, attr_name='targettemp', topic_class='temperature_state_topic', 
-                               regex=f'00[\da-fA-F]{{{t_off}}}([\\da-fA-F]{{2}}).*', 
-                               process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
-        
-        # 현재 온도
-        device.register_status(message_flag=msg_flag, attr_name='currenttemp', topic_class='current_temperature_topic', 
-                               regex=f'00[\da-fA-F]{{{c_off}}}([\\da-fA-F]{{2}}).*', 
-                               process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
+        # --- 3. 온도 정보 ---
+        # f-string 대신 수동으로 regex를 작성하는 것이 가장 안전하지만, 
+        # 일단 깔끔하게 유지하기 위해 .* 를 붙여 둡니다.
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='targettemp', 
+            topic_class='temperature_state_topic', 
+            regex=f'00[\\da-fA-F]{{{t_off}}}([\\da-fA-F]{{2}}).*', 
+            process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5
+        )
+    
+        device.register_status(
+            message_flag=msg_flag, 
+            attr_name='currenttemp', 
+            topic_class='current_temperature_topic', 
+            regex=f'00[\\da-fA-F]{{{c_off}}}([\\da-fA-F]{{2}}).*', 
+            process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5
+        )
 
-    # 제어 명령
-    device.register_command(message_flag='43', attr_name='power', topic_class='mode_command_topic', process_func=lambda v: '01' if v == 'heat' else '00')
-    device.register_command(message_flag='45', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='외출' else '00')
-    device.register_command(message_flag='46', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='예약' else '00')
-    device.register_command(message_flag='47', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='온수' else '00')
-    device.register_command(message_flag='44', attr_name='targettemp', topic_class='temperature_command_topic', process_func=lambda v: format(int(float(v) // 1 + float(v) % 1 * 256), '02x'))
+        # 제어 명령
+        device.register_command(message_flag='43', attr_name='power', topic_class='mode_command_topic', process_func=lambda v: '01' if v == 'heat' else '00')
+        device.register_command(message_flag='45', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='외출' else '00')
+        device.register_command(message_flag='46', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='예약' else '00')
+        device.register_command(message_flag='47', attr_name='preset_mode', topic_class='preset_mode_command_topic', process_func=lambda v: '01' if v =='온수' else '00')
+        device.register_command(message_flag='44', attr_name='targettemp', topic_class='temperature_command_topic', process_func=lambda v: format(int(float(v) // 1 + float(v) % 1 * 256), '02x'))
 
 # 전체 제어
 난방전체 = wallpad.add_device(device_name='난방 전체', device_id='36', device_subid='1f', device_class='climate', mqtt_discovery=False, child_device=heating_devices)
