@@ -275,7 +275,24 @@ optional_info = {
     'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'
 }
 
-# ... (rooms 리스트는 동일) ...
+# --- 1. 변수 정의 (반드시 for문보다 먼저 나와야 함) ---
+optional_info = {
+    'modes': ['off', 'heat'], 
+    'preset_modes': ['heat', '외출', '온수', '예약'], 
+    'temp_step': 1.0, 'precision': 1.0, 'min_temp': 5.0, 'max_temp': 45.0, 'send_if_off': 'false'
+}
+
+
+rooms = [
+    ('거실 난방', '11', 4, 8, 10),
+    ('안방 난방', '12', 3, 12, 14),
+    ('확장 난방', '13', 2, 16, 18),
+    ('제인이방 난방', '14', 1, 20, 22),
+    ('팬트리 난방', '15', 0, 24, 26)
+]
+
+heating_devices = []
+
 
 for name, subid, bit_pos, t_off, c_off in rooms:
     device = wallpad.add_device(device_name=name, device_id='36', device_subid=subid, device_class='climate', optional_info=optional_info)
