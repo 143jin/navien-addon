@@ -288,32 +288,32 @@ for name, subid, bit_pos, t_off, c_off in rooms:
     for msg_flag in ['81', 'C3', 'C5', 'C7']:
         # 전원 (mode_state)
         device.register_status(message_flag=msg_flag, attr_name='power', topic_class='mode_state_topic', 
-                               regex=r'00([\da-fA-F]{2})', 
+                               regex=r'00([\da-fA-F]{2}).*', 
                                process_func=lambda v, p=bit_pos: 'heat' if format(int(v, 16), '05b')[p] == '1' else 'off')
         
         # 외출 (preset)
         device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{2}([\da-fA-F]{2})', 
+                               regex=r'00[\da-fA-F]{2}([\da-fA-F]{2}).*', 
                                process_func=lambda v, p=bit_pos: '외출' if format(int(v, 16), '05b')[p] == '1' else 'heat')
         
         # 예약 (preset)
         device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{4}([\da-fA-F]{2})', 
+                               regex=r'00[\da-fA-F]{4}([\da-fA-F]{2}).*', 
                                process_func=lambda v, p=bit_pos: '예약' if format(int(v, 16), '05b')[p] == '1' else 'heat')
         
         # 온수 (preset)
         device.register_status(message_flag=msg_flag, attr_name='preset_mode', topic_class='preset_mode_state_topic', 
-                               regex=r'00[\da-fA-F]{6}([\da-fA-F]{2})', 
+                               regex=r'00[\da-fA-F]{6}([\da-fA-F]{2}).*', 
                                process_func=lambda v, p=bit_pos: '온수' if format(int(v, 16), '05b')[p] == '1' else 'heat')
 
         # 타겟 온도
         device.register_status(message_flag=msg_flag, attr_name='targettemp', topic_class='temperature_state_topic', 
-                               regex=f'00[\\da-fA-F]{{{t_off}}}([\\da-fA-F]{{2}})', 
+                               regex=f'00[\da-fA-F]{{{t_off}}}([\\da-fA-F]{{2}}).*', 
                                process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
         
         # 현재 온도
         device.register_status(message_flag=msg_flag, attr_name='currenttemp', topic_class='current_temperature_topic', 
-                               regex=f'00[\\da-fA-F]{{{c_off}}}([\\da-fA-F]{{2}})', 
+                               regex=f'00[\da-fA-F]{{{c_off}}}([\\da-fA-F]{{2}}).*', 
                                process_func=lambda v: int(v, 16) % 128 + int(v, 16) // 128 * 0.5)
 
     # 제어 명령
