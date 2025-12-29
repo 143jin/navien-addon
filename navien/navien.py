@@ -314,7 +314,7 @@ for name, subid, bit_pos, t_off, c_off in rooms:
             attr_name='power', 
             topic_class='mode_state_topic', 
             regex=r'00([0-9a-fA-F]{8}).*', 
-            process_func=lambda v: 'off' if v == '00000000' else 'heat'
+            process_func=lambda v: 'off' if v == '00 18 00 00' else 'heat'
         )
     
         # [상태 2] 프리셋 모드 (통합 판단)
