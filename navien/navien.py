@@ -1,3 +1,4 @@
+regex=r'00(?P<heat>[\da-fA-F]{2})(?P<out>[\da-fA-F]{2})(?P<reserve>[\da-fA-F]{2})(?P<hotwater>[\da-fA-F]{2})'
 import json
 import re
 import time
@@ -331,20 +332,21 @@ def parse_preset(out, reserve, hotwater):
 
 
 def make_mode_process(room_index):
-    return lambda h, o, r, w: parse_mode(
-        bit_on(h, room_index),
-        bit_on(o, room_index),
-        bit_on(r, room_index),
-        bit_on(w, room_index),
+    return lambda g: parse_mode(
+        bit_on(g['heat'], room_index),
+        bit_on(g['out'], room_index),
+        bit_on(g['reserve'], room_index),
+        bit_on(g['hotwater'], room_index),
     )
 
 
 def make_preset_process(room_index):
-    return lambda h, o, r, w: parse_preset(
-        bit_on(o, room_index),
-        bit_on(r, room_index),
-        bit_on(w, room_index),
+    return lambda g: parse_preset(
+        bit_on(g['out'], room_index),
+        bit_on(g['reserve'], room_index),
+        bit_on(g['hotwater'], room_index),
     )
+
 
 # ------------------------
 # 상태 등록
@@ -358,7 +360,7 @@ for message_flag in ['81', 'C3', 'C5', 'C7']:
             message_flag=message_flag,
             attr_name='mode',
             topic_class='mode_state_topic',
-            regex=r'00([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})',
+            regex=r'00(?P<heat>[\da-fA-F]{2})(?P<out>[\da-fA-F]{2})(?P<reserve>[\da-fA-F]{2})(?P<hotwater>[\da-fA-F]{2})',
             process_func=make_mode_process(idx),
         )
 
@@ -366,7 +368,7 @@ for message_flag in ['81', 'C3', 'C5', 'C7']:
             message_flag=message_flag,
             attr_name='preset_mode',
             topic_class='preset_mode_state_topic',
-            regex=r'00([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})',
+            regex=r'00(?P<heat>[\da-fA-F]{2})(?P<out>[\da-fA-F]{2})(?P<reserve>[\da-fA-F]{2})(?P<hotwater>[\da-fA-F]{2})',
             process_func=make_preset_process(idx),
         )
 
