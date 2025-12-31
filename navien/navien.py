@@ -270,20 +270,20 @@ optional_info = {'optimistic': 'false'}
 
 ### 난방 ###
 optional_info = {
-    'modes': ['off', 'heat'],
-    'preset_modes': ['외출', '온수', '예약'],
+    'modes': ['off'],   # HA 요구사항용 더미
+    'preset_modes': ['heat', '외출', '예약', '온수', 'off'],
     'temp_step': 1.0,
     'precision': 1.0,
     'min_temp': 5.0,
     'max_temp': 45.0,
-    'send_if_off': 'false',
+    'send_if_off': 'false'
 }
 
-거실난방 = wallpad.add_device('거실 난방', '36', '11', 'climate', optional_info=optional_info)
-안방난방 = wallpad.add_device('안방 난방', '36', '12', 'climate', optional_info=optional_info)
-확장난방 = wallpad.add_device('확장 난방', '36', '13', 'climate', optional_info=optional_info)
-제인이방난방 = wallpad.add_device('제인이방 난방', '36', '14', 'climate', optional_info=optional_info)
-팬트리난방 = wallpad.add_device('팬트리 난방', '36', '15', 'climate', optional_info=optional_info)
+거실난방 = wallpad.add_device('거실 난방', '36', '11', 'climate', optional_info)
+안방난방 = wallpad.add_device('안방 난방', '36', '12', 'climate', optional_info)
+확장난방 = wallpad.add_device('확장 난방', '36', '13', 'climate', optional_info)
+제인이방난방 = wallpad.add_device('제인이방 난방', '36', '14', 'climate', optional_info)
+팬트리난방 = wallpad.add_device('팬트리 난방', '36', '15', 'climate', optional_info)
 
 난방전체 = wallpad.add_device(
     '난방 전체', '36', '1f', 'climate',
@@ -296,14 +296,29 @@ optional_info = {
     attr_name='availability',
     regex=r'()',
     topic_class='availability_topic',
-    process_func=lambda v: 'online'
+    process_func=lambda _: 'online'
 )
 
-# ------------------------
-# 공통 유틸
-# ------------------------
-def bit_on(byte_hex, index):
-    return format(int(byte_hex, 16), '05b')[index] == '1'
+# --------------------------------------------------
+# 패킷 해석 로직
+# --------------------------------------------------
+
+def parse_preset(heat, out, reserve, hotwater):
+    # 패킷은 난방 → 외출 → 예약 → 온수 순
+    if heat:
+        return 'heat'
+    if out:
+        return '외출'
+    if reserve:
+        return '예약'
+    if hotwater:
+        return '온수'
+    return 'off'
+
+
+def bit_on(byte_hex, bit_index):
+    # bit_index: 4(거실) ~ 0(팬트리)
+    return (int(byte_hex, 16) >> bit_index) & 1 == 1
 
 
 ROOM_BIT_INDEX = {
@@ -314,101 +329,41 @@ ROOM_BIT_INDEX = {
     '팬트리 난방': 0,
 }
 
-# ------------------------
-# 상태 파싱
-# ------------------------
-def parse_mode(heat, out, reserve, hotwater):
-    return 'heat' if (heat or out or reserve or hotwater) else 'off'
-
-
-def parse_preset(out, reserve, hotwater):
-    if out:
-        return '외출'
-    if reserve:
-        return '예약'
-    if hotwater:
-        return '온수'
-    return None
-
-
-def make_mode_process(room_index):
-    return lambda g: parse_mode(
-        bit_on(g['heat'], room_index),
-        bit_on(g['out'], room_index),
-        bit_on(g['reserve'], room_index),
-        bit_on(g['hotwater'], room_index),
-    )
-
 
 def make_preset_process(room_index):
+    # ⚠️ 반드시 dict 하나만 받는다 (groupdict)
     return lambda g: parse_preset(
-        bit_on(g['out'], room_index),
-        bit_on(g['reserve'], room_index),
-        bit_on(g['hotwater'], room_index),
+        heat     = bit_on(g['heat'], room_index),
+        out      = bit_on(g['out'], room_index),
+        reserve  = bit_on(g['reserve'], room_index),
+        hotwater = bit_on(g['hotwater'], room_index),
     )
 
 
-# ------------------------
+PRESET_REGEX = (
+    r'00'
+    r'(?P<heat>[\da-fA-F]{2})'
+    r'(?P<out>[\da-fA-F]{2})'
+    r'(?P<reserve>[\da-fA-F]{2})'
+    r'(?P<hotwater>[\da-fA-F]{2})'
+)
+
+# --------------------------------------------------
 # 상태 등록
-# 패킷 순서: 난방 / 외출 / 예약 / 온수
-# ------------------------
+# --------------------------------------------------
+
 for message_flag in ['81', 'C3', 'C5', 'C7']:
     for device in [거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방]:
-        idx = ROOM_BIT_INDEX[device.device_name]
-
-        device.register_status(
-            message_flag=message_flag,
-            attr_name='mode',
-            topic_class='mode_state_topic',
-            regex=r'00(?P<heat>[\da-fA-F]{2})(?P<out>[\da-fA-F]{2})(?P<reserve>[\da-fA-F]{2})(?P<hotwater>[\da-fA-F]{2})',
-            process_func=make_mode_process(idx),
-        )
-
         device.register_status(
             message_flag=message_flag,
             attr_name='preset_mode',
             topic_class='preset_mode_state_topic',
-            regex=r'00(?P<heat>[\da-fA-F]{2})(?P<out>[\da-fA-F]{2})(?P<reserve>[\da-fA-F]{2})(?P<hotwater>[\da-fA-F]{2})',
-            process_func=make_preset_process(idx),
+            regex=PRESET_REGEX,
+            process_func=make_preset_process(
+                ROOM_BIT_INDEX[device.device_name]
+            )
         )
 
-        device.register_status(
-            message_flag=message_flag,
-            attr_name='targettemp',
-            topic_class='temperature_state_topic',
-            regex=rf"00[\da-fA-F]{{{8 + idx*4}}}([\da-fA-F]{{2}})",
-            process_func=lambda v: int(v, 16) % 128 + (int(v, 16) // 128) * 0.5
-        )
-
-        device.register_status(
-            message_flag=message_flag,
-            attr_name='currenttemp',
-            topic_class='current_temperature_topic',
-            regex=rf"00[\da-fA-F]{{{10 + idx*4}}}([\da-fA-F]{{2}})",
-            process_func=lambda v: int(v, 16) % 128 + (int(v, 16) // 128) * 0.5
-        )
-
-# ------------------------
-# 명령
-# ------------------------
-난방전체.register_command(
-    message_flag='43',
-    attr_name='mode',
-    topic_class='mode_command_topic',
-    process_func=lambda v: '01' if v == 'heat' else '00'
-)
-
-for device in [거실난방, 안방난방, 확장난방, 제인이방난방, 팬트리난방]:
-    device.register_command('43', 'mode', 'mode_command_topic', lambda v: '01' if v == 'heat' else '00')
-    device.register_command('45', 'preset_mode', 'preset_mode_command_topic', lambda v: '01' if v == '외출' else '00')
-    device.register_command('46', 'preset_mode', 'preset_mode_command_topic', lambda v: '01' if v == '예약' else '00')
-    device.register_command('47', 'preset_mode', 'preset_mode_command_topic', lambda v: '01' if v == '온수' else '00')
-    device.register_command(
-        '44',
-        'targettemp',
-        'temperature_command_topic',
-        lambda v: format(int(float(v) // 1 + float(v) % 1 * 128 * 2), '02x')
-    )
 
 
 wallpad.register_mqtt_discovery()
