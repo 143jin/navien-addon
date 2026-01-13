@@ -1,6 +1,6 @@
 {
   "name": "Navien RS485 MQTT Bridge",
-  "version": "1.0.75",
+  "version": "1.0.76",
   "slug": "navien",
   "description": "RS485 ↔ MQTT 브리지 애드온",
   "documentation": "https://github.com/143jin/navien-addon",
